@@ -1,0 +1,77 @@
+import { Play, Pause, Square, Repeat, Volume2 } from 'lucide-react';
+import { useDAW } from '@/stores/daw-store';
+import { Slider } from '@/components/ui/slider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+export function TopBar() {
+  const { state, dispatch, play, stop, pause } = useDAW();
+
+  return (
+    <div className="flex items-center gap-4 px-4 py-2 bg-card border-b border-border h-14 shrink-0">
+      {/* Project Name */}
+      <Input
+        value={state.projectName}
+        onChange={(e) => dispatch({ type: 'SET_PROJECT_NAME', name: e.target.value })}
+        className="w-40 h-8 bg-muted border-border text-sm font-mono"
+      />
+
+      {/* BPM */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">BPM</span>
+        <Input
+          type="number"
+          min={40}
+          max={300}
+          value={state.bpm}
+          onChange={(e) => dispatch({ type: 'SET_BPM', bpm: Math.max(40, Math.min(300, Number(e.target.value))) })}
+          className="w-16 h-8 bg-muted border-border text-sm font-mono text-center"
+        />
+      </div>
+
+      {/* Time Signature */}
+      <div className="text-xs text-muted-foreground font-mono">
+        {state.timeSignature[0]}/{state.timeSignature[1]}
+      </div>
+
+      {/* Transport */}
+      <div className="flex items-center gap-1 ml-4">
+        {state.isPlaying ? (
+          <Button variant="ghost" size="icon" onClick={pause} className="h-8 w-8 text-accent">
+            <Pause className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button variant="ghost" size="icon" onClick={play} className="h-8 w-8 text-daw-playhead">
+            <Play className="h-4 w-4" />
+          </Button>
+        )}
+        <Button variant="ghost" size="icon" onClick={stop} className="h-8 w-8">
+          <Square className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => dispatch({ type: 'SET_LOOP', enabled: !state.loopEnabled })}
+          className={`h-8 w-8 ${state.loopEnabled ? 'text-primary' : 'text-muted-foreground'}`}
+        >
+          <Repeat className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Master Volume */}
+      <div className="flex items-center gap-2 ml-auto">
+        <Volume2 className="h-4 w-4 text-muted-foreground" />
+        <Slider
+          value={[state.masterVolume * 100]}
+          onValueChange={([v]) => dispatch({ type: 'SET_MASTER_VOLUME', volume: v / 100 })}
+          max={100}
+          step={1}
+          className="w-24"
+        />
+        <span className="text-xs text-muted-foreground font-mono w-8">
+          {Math.round(state.masterVolume * 100)}
+        </span>
+      </div>
+    </div>
+  );
+}

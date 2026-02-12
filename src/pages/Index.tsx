@@ -1,13 +1,37 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { DAWProvider } from '@/stores/daw-store';
+import { TopBar } from '@/components/daw/TopBar';
+import { InstrumentSidebar } from '@/components/daw/InstrumentSidebar';
+import { Timeline } from '@/components/daw/Timeline';
+import { StepSequencer } from '@/components/daw/StepSequencer';
+import { SpectrumAnalyzer } from '@/components/daw/SpectrumAnalyzer';
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <DAWProvider>
+      <div className="flex flex-col h-screen overflow-hidden">
+        <TopBar />
+        <div className="flex flex-1 overflow-hidden">
+          <InstrumentSidebar />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <Timeline />
+            {/* Bottom Panel */}
+            <div className="border-t border-border bg-card shrink-0" style={{ height: 280 }}>
+              <div className="flex h-full">
+                <div className="flex-1 overflow-auto border-r border-border">
+                  <StepSequencer />
+                </div>
+                <div className="w-52 p-2">
+                  <div className="text-[10px] font-mono text-muted-foreground mb-1 uppercase tracking-wider">
+                    Spectrum
+                  </div>
+                  <SpectrumAnalyzer />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </DAWProvider>
   );
 };
 
