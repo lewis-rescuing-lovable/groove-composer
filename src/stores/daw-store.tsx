@@ -39,6 +39,7 @@ const defaultTrack: Track = {
 interface DAWState extends DAWProject {
   isPlaying: boolean;
   currentStep: number;
+  selectedTrackId: string | null;
   selectedPatternId: string | null;
   selectedClipId: string | null;
   activePanel: 'drums' | 'synth' | 'samples';
@@ -57,6 +58,7 @@ const initialState: DAWState = {
   loopEnd: 4,
   isPlaying: false,
   currentStep: -1,
+  selectedTrackId: 'track-1',
   selectedPatternId: 'default-pattern',
   selectedClipId: null,
   activePanel: 'drums',
@@ -83,6 +85,7 @@ type Action =
   | { type: 'ADD_CLIP'; trackId: string; clip: Clip }
   | { type: 'REMOVE_CLIP'; trackId: string; clipId: string }
   | { type: 'SET_ACTIVE_PANEL'; panel: 'drums' | 'synth' | 'samples' }
+  | { type: 'SELECT_TRACK'; trackId: string }
   | { type: 'LOAD_PROJECT'; project: DAWProject };
 
 function reducer(state: DAWState, action: Action): DAWState {
@@ -176,6 +179,8 @@ function reducer(state: DAWState, action: Action): DAWState {
       };
     case 'SET_ACTIVE_PANEL':
       return { ...state, activePanel: action.panel };
+    case 'SELECT_TRACK':
+      return { ...state, selectedTrackId: action.trackId };
     case 'LOAD_PROJECT':
       return { ...state, ...action.project, isPlaying: false, currentStep: -1 };
     default:
