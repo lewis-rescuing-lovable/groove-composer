@@ -1,19 +1,23 @@
 import { useDAW } from '@/stores/daw-store';
-import { Track as TrackType } from '@/lib/types';
-import { Plus, Volume2, VolumeX, Headphones, Trash2 } from 'lucide-react';
+import { Track as TrackType, Clip } from '@/lib/types';
+import { Plus, Trash2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { useRef, useState, useCallback } from 'react';
 
+const BEAT_WIDTH = 60;
+const BEATS_TO_SHOW = 32;
+const SNAP = 0.5; // snap to half-beats
+
+function snapBeat(beat: number): number {
+  return Math.round(beat / SNAP) * SNAP;
+}
+
+// ─── Main Timeline ────────────────────────────────────────────
 export function Timeline() {
   const { state, dispatch } = useDAW();
-  const beatsToShow = 32;
-  const beatWidth = 60;
 
-  const addTrack = () => {
-    dispatch({ type: 'ADD_TRACK_WITH_PATTERN' });
-  };
-
-  // Performance warning
+  const addTrack = () => dispatch({ type: 'ADD_TRACK_WITH_PATTERN' });
   const showWarning = state.tracks.length >= 16;
 
   return (
@@ -32,18 +36,14 @@ export function Timeline() {
             <Plus className="h-3 w-3" />
           </Button>
         </div>
-        {/* Beat markers */}
         <div className="flex-1 overflow-x-auto">
-          <div className="flex" style={{ width: beatsToShow * beatWidth }}>
-            {Array.from({ length: beatsToShow }, (_, i) => (
+          <div className="flex" style={{ width: BEATS_TO_SHOW * BEAT_WIDTH }}>
+            {Array.from({ length: BEATS_TO_SHOW }, (_, i) => (
               <div
                 key={i}
                 className={`text-[10px] font-mono py-1.5 border-r
-                  ${i % 4 === 0
-                    ? 'text-muted-foreground border-daw-grid-line-strong'
-                    : 'text-muted-foreground/30 border-daw-grid-line'
-                  }`}
-                style={{ width: beatWidth }}
+                  ${i % 4 === 0 ? 'text-muted-foreground border-daw-grid-line-strong' : 'text-muted-foreground/30 border-daw-grid-line'}`}
+                style={{ width: BEAT_WIDTH }}
               >
                 <span className="pl-1">{Math.floor(i / 4) + 1}.{(i % 4) + 1}</span>
               </div>
@@ -55,9 +55,8 @@ export function Timeline() {
       {/* Track lanes */}
       <div className="flex-1 overflow-y-auto">
         {state.tracks.map(track => (
-          <TrackLane key={track.id} track={track} beatsToShow={beatsToShow} beatWidth={beatWidth} />
+          <TrackLane key={track.id} track={track} />
         ))}
-
         {state.tracks.length === 0 && (
           <div className="flex items-center justify-center h-32 text-muted-foreground text-sm font-mono">
             Click + to add a track
@@ -68,23 +67,35 @@ export function Timeline() {
   );
 }
 
-function TrackLane({ track, beatsToShow, beatWidth }: { track: TrackType; beatsToShow: number; beatWidth: number }) {
+// ─── Track Lane ───────────────────────────────────────────────
+function TrackLane({ track }: { track: TrackType }) {
   const { state, dispatch } = useDAW();
-
-  const clipColorClass = (type: string) => {
-    switch (type) {
-      case 'drum': return 'bg-daw-clip-drum/80 border-daw-clip-drum';
-      case 'synth': return 'bg-daw-clip-synth/80 border-daw-clip-synth';
-      case 'sample': return 'bg-daw-clip-sample/80 border-daw-clip-sample';
-      default: return 'bg-muted border-border';
-    }
-  };
-
   const isSelected = state.selectedTrackId === track.id;
+  const laneRef = useRef<HTMLDivElement>(null);
+
+  // Handle drop from another track
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const data = e.dataTransfer.getData('application/beatforge-clip');
+    if (!data) return;
+    const { clipId, fromTrackId, offsetBeats } = JSON.parse(data);
+
+    const rect = laneRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = e.clientX - rect.left;
+    const beat = snapBeat(x / BEAT_WIDTH - offsetBeats);
+
+    dispatch({ type: 'MOVE_CLIP', fromTrackId, toTrackId: track.id, clipId, startBeat: beat });
+  }, [dispatch, track.id]);
 
   return (
     <div
-      className={`flex border-b border-border group cursor-pointer ${isSelected ? 'ring-1 ring-inset ring-primary/50' : ''}`}
+      className={`flex border-b border-border group ${isSelected ? 'ring-1 ring-inset ring-primary/50' : ''}`}
       onClick={() => dispatch({ type: 'SELECT_TRACK', trackId: track.id })}
     >
       {/* Track controls */}
@@ -96,35 +107,28 @@ function TrackLane({ track, beatsToShow, beatWidth }: { track: TrackType; beatsT
             className="flex-1 bg-transparent text-xs font-mono text-foreground outline-none px-1"
           />
           <Button
-            variant="ghost"
-            size="icon"
+            variant="ghost" size="icon"
             className="h-5 w-5 opacity-0 group-hover:opacity-100 text-destructive"
-            onClick={() => dispatch({ type: 'REMOVE_TRACK', trackId: track.id })}
+            onClick={(e) => { e.stopPropagation(); dispatch({ type: 'REMOVE_TRACK', trackId: track.id }); }}
           >
             <Trash2 className="h-3 w-3" />
           </Button>
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => dispatch({ type: 'TOGGLE_TRACK_MUTE', trackId: track.id })}
+            onClick={(e) => { e.stopPropagation(); dispatch({ type: 'TOGGLE_TRACK_MUTE', trackId: track.id }); }}
             className={`text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors
               ${track.muted ? 'bg-destructive/20 text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            M
-          </button>
+          >M</button>
           <button
-            onClick={() => dispatch({ type: 'TOGGLE_TRACK_SOLO', trackId: track.id })}
+            onClick={(e) => { e.stopPropagation(); dispatch({ type: 'TOGGLE_TRACK_SOLO', trackId: track.id }); }}
             className={`text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors
               ${track.solo ? 'bg-daw-meter-yellow/20 text-daw-meter-yellow' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            S
-          </button>
+          >S</button>
           <Slider
             value={[track.volume * 100]}
             onValueChange={([v]) => dispatch({ type: 'SET_TRACK_VOLUME', trackId: track.id, volume: v / 100 })}
-            max={100}
-            step={1}
-            className="flex-1 mx-1"
+            max={100} step={1} className="flex-1 mx-1"
           />
           <span className="text-[9px] font-mono text-muted-foreground w-6 text-right">
             {Math.round(track.volume * 100)}
@@ -133,14 +137,20 @@ function TrackLane({ track, beatsToShow, beatWidth }: { track: TrackType; beatsT
       </div>
 
       {/* Clip area */}
-      <div className="flex-1 relative overflow-x-auto" style={{ minHeight: 52 }}>
-        <div className="relative h-full" style={{ width: beatsToShow * beatWidth }}>
+      <div
+        ref={laneRef}
+        className="flex-1 relative overflow-x-auto cursor-default"
+        style={{ minHeight: 52 }}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        <div className="relative h-full" style={{ width: BEATS_TO_SHOW * BEAT_WIDTH }}>
           {/* Grid lines */}
-          {Array.from({ length: beatsToShow }, (_, i) => (
+          {Array.from({ length: BEATS_TO_SHOW }, (_, i) => (
             <div
               key={i}
               className={`absolute top-0 bottom-0 border-r ${i % 4 === 0 ? 'border-daw-grid-line-strong' : 'border-daw-grid-line'}`}
-              style={{ left: i * beatWidth }}
+              style={{ left: i * BEAT_WIDTH }}
             />
           ))}
 
@@ -148,27 +158,152 @@ function TrackLane({ track, beatsToShow, beatWidth }: { track: TrackType; beatsT
           {state.isPlaying && state.currentStep >= 0 && (
             <div
               className="absolute top-0 bottom-0 w-0.5 bg-daw-playhead z-10 transition-[left] duration-75"
-              style={{ left: (state.currentStep / 4) * beatWidth }}
+              style={{ left: (state.currentStep / 4) * BEAT_WIDTH }}
             />
           )}
 
           {/* Clips */}
           {track.clips.map(clip => (
-            <div
-              key={clip.id}
-              className={`absolute top-1 bottom-1 rounded-sm border ${clipColorClass(clip.type)}
-                flex items-center px-1.5 text-[10px] font-mono text-white/90 cursor-pointer
-                hover:brightness-110 transition-all`}
-              style={{
-                left: clip.startBeat * beatWidth,
-                width: clip.durationBeats * beatWidth - 2,
-              }}
-            >
-              {clip.type === 'drum' ? '🥁' : clip.type === 'synth' ? '🎹' : '🎵'}
-            </div>
+            <ClipBlock key={clip.id} clip={clip} trackId={track.id} laneRef={laneRef} />
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Clip Block (draggable + resizable) ───────────────────────
+function ClipBlock({
+  clip, trackId, laneRef,
+}: {
+  clip: Clip;
+  trackId: string;
+  laneRef: React.RefObject<HTMLDivElement>;
+}) {
+  const { state, dispatch } = useDAW();
+  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [dragPreview, setDragPreview] = useState<number | null>(null);
+  const [resizePreview, setResizePreview] = useState<number | null>(null);
+  const isSelectedClip = state.selectedClipId === clip.id;
+
+  const clipColor = (() => {
+    switch (clip.type) {
+      case 'drum': return 'bg-daw-clip-drum/80 border-daw-clip-drum';
+      case 'synth': return 'bg-daw-clip-synth/80 border-daw-clip-synth';
+      case 'sample': return 'bg-daw-clip-sample/80 border-daw-clip-sample';
+      default: return 'bg-muted border-border';
+    }
+  })();
+
+  // ── Native drag for cross-track moves ──
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetBeats = offsetX / BEAT_WIDTH;
+
+    e.dataTransfer.setData('application/beatforge-clip', JSON.stringify({
+      clipId: clip.id,
+      fromTrackId: trackId,
+      offsetBeats,
+    }));
+    e.dataTransfer.effectAllowed = 'move';
+    setIsDragging(true);
+  }, [clip.id, trackId]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // ── Mouse drag for same-track horizontal move ──
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Right side 8px = resize handle
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const isRightEdge = e.clientX > rect.right - 8;
+
+    if (isRightEdge) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsResizing(true);
+      const startX = e.clientX;
+      const startDuration = clip.durationBeats;
+
+      const onMove = (ev: MouseEvent) => {
+        const dx = ev.clientX - startX;
+        const dBeats = dx / BEAT_WIDTH;
+        const newDur = snapBeat(Math.max(0.5, startDuration + dBeats));
+        setResizePreview(newDur);
+      };
+
+      const onUp = (ev: MouseEvent) => {
+        const dx = ev.clientX - startX;
+        const dBeats = dx / BEAT_WIDTH;
+        const newDur = snapBeat(Math.max(0.5, startDuration + dBeats));
+        dispatch({ type: 'RESIZE_CLIP', trackId, clipId: clip.id, durationBeats: newDur });
+        setIsResizing(false);
+        setResizePreview(null);
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      return;
+    }
+
+    // Select clip on click
+    dispatch({ type: 'SELECT_CLIP', trackId, clipId: clip.id });
+  }, [clip, trackId, dispatch]);
+
+  const displayStart = dragPreview ?? clip.startBeat;
+  const displayDuration = resizePreview ?? clip.durationBeats;
+
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onMouseDown={handleMouseDown}
+      className={`absolute top-1 bottom-1 rounded-sm border ${clipColor}
+        flex items-center justify-between px-1.5 text-[10px] font-mono text-white/90
+        select-none z-[5]
+        ${isDragging ? 'opacity-40' : 'hover:brightness-110'}
+        ${isSelectedClip ? 'ring-1 ring-white/40' : ''}
+        ${isResizing ? 'ring-1 ring-primary' : ''}
+        transition-shadow`}
+      style={{
+        left: displayStart * BEAT_WIDTH,
+        width: displayDuration * BEAT_WIDTH - 2,
+        cursor: 'grab',
+      }}
+    >
+      <span className="truncate">
+        {clip.type === 'drum' ? '🥁' : clip.type === 'synth' ? '🎹' : '🎵'}
+      </span>
+
+      {/* Duplicate button */}
+      {isSelectedClip && (
+        <button
+          className="shrink-0 p-0.5 rounded hover:bg-white/20 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            dispatch({ type: 'DUPLICATE_CLIP', trackId, clipId: clip.id });
+          }}
+          title="Duplicate clip"
+        >
+          <Copy className="h-3 w-3" />
+        </button>
+      )}
+
+      {/* Resize handle */}
+      <div
+        className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20 rounded-r-sm"
+        onMouseDown={(e) => {
+          // Prevent drag start on the resize handle
+          e.stopPropagation();
+          handleMouseDown(e);
+        }}
+      />
     </div>
   );
 }
