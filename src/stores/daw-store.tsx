@@ -81,6 +81,8 @@ type Action =
   | { type: 'SET_LOOP'; enabled: boolean }
   | { type: 'TOGGLE_DRUM_STEP'; patternId: string; sound: DrumSound; step: number }
   | { type: 'ADD_PATTERN'; pattern: DrumPattern }
+  | { type: 'REMOVE_PATTERN'; patternId: string }
+  | { type: 'ASSIGN_PATTERN_TO_CLIP'; trackId: string; clipId: string; patternId: string }
   | { type: 'SET_PATTERN_STEPS'; patternId: string; steps: number }
   | { type: 'ADD_TRACK_WITH_PATTERN' }
   | { type: 'REMOVE_TRACK'; trackId: string }
@@ -127,6 +129,21 @@ function reducer(state: DAWState, action: Action): DAWState {
     }
     case 'ADD_PATTERN':
       return { ...state, drumPatterns: [...state.drumPatterns, action.pattern] };
+    case 'REMOVE_PATTERN': {
+      // Don't remove if it's still used by a clip
+      const inUse = state.tracks.some(t => t.clips.some(c => c.patternId === action.patternId));
+      if (inUse) return state;
+      return { ...state, drumPatterns: state.drumPatterns.filter(p => p.id !== action.patternId) };
+    }
+    case 'ASSIGN_PATTERN_TO_CLIP':
+      return {
+        ...state,
+        tracks: state.tracks.map(t =>
+          t.id === action.trackId
+            ? { ...t, clips: t.clips.map(c => c.id === action.clipId ? { ...c, patternId: action.patternId } : c) }
+            : t
+        ),
+      };
     case 'SET_PATTERN_STEPS': {
       return {
         ...state,
@@ -177,10 +194,25 @@ function reducer(state: DAWState, action: Action): DAWState {
       };
     }
     case 'REMOVE_TRACK': {
+      const removedTrack = state.tracks.find(t => t.id === action.trackId);
       const remaining = state.tracks.filter(t => t.id !== action.trackId);
+      // Collect pattern IDs used only by this track
+      const removedPatternIds = new Set<string>();
+      if (removedTrack) {
+        for (const clip of removedTrack.clips) {
+          if (clip.patternId) removedPatternIds.add(clip.patternId);
+        }
+      }
+      // Keep patterns still referenced by other tracks
+      for (const t of remaining) {
+        for (const c of t.clips) {
+          if (c.patternId) removedPatternIds.delete(c.patternId);
+        }
+      }
       return {
         ...state,
         tracks: remaining,
+        drumPatterns: state.drumPatterns.filter(p => !removedPatternIds.has(p.id)),
         selectedTrackId: state.selectedTrackId === action.trackId
           ? (remaining[0]?.id ?? null)
           : state.selectedTrackId,
