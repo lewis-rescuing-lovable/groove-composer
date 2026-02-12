@@ -1,12 +1,16 @@
 import { useDAW, getActivePatternId } from '@/stores/daw-store';
 import { generateId, createEmptyDrumGrid, DRUM_LABELS, DRUM_SOUNDS } from '@/lib/types';
-import { Drum, Music, FileAudio, Plus } from 'lucide-react';
+import { Drum, Music, FileAudio, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function InstrumentSidebar() {
   const { state, dispatch, previewSound } = useDAW();
 
   const activePatternId = getActivePatternId(state);
+
+  // Find the selected track's first clip for pattern assignment
+  const selectedTrack = state.tracks.find(t => t.id === state.selectedTrackId);
+  const selectedClip = selectedTrack?.clips.find(c => c.id === state.selectedClipId) ?? selectedTrack?.clips[0];
 
   const addNewPattern = () => {
     const id = generateId();
@@ -18,6 +22,20 @@ export function InstrumentSidebar() {
         steps: 16,
         grid: createEmptyDrumGrid(16),
       },
+    });
+  };
+
+  const isPatternInUse = (patternId: string) => {
+    return state.tracks.some(t => t.clips.some(c => c.patternId === patternId));
+  };
+
+  const assignPattern = (patternId: string) => {
+    if (!selectedTrack || !selectedClip) return;
+    dispatch({
+      type: 'ASSIGN_PATTERN_TO_CLIP',
+      trackId: selectedTrack.id,
+      clipId: selectedClip.id,
+      patternId,
     });
   };
 
@@ -56,19 +74,44 @@ export function InstrumentSidebar() {
               </Button>
             </div>
 
-            {state.drumPatterns.map(p => (
-              <div
-                key={p.id}
-                className={`w-full text-left px-2 py-1.5 rounded text-xs font-mono transition-colors
-                  ${activePatternId === p.id
-                    ? 'bg-primary/20 text-primary'
-                    : 'text-sidebar-foreground'
-                  }`}
-              >
-                {p.name}
-                <span className="text-muted-foreground ml-1">({p.steps} steps)</span>
+            {selectedTrack && (
+              <div className="text-[10px] font-mono text-muted-foreground mb-1">
+                Click a pattern to assign it to <span className="text-primary">{selectedTrack.name}</span>
               </div>
-            ))}
+            )}
+
+            {state.drumPatterns.map(p => {
+              const isActive = activePatternId === p.id;
+              const inUse = isPatternInUse(p.id);
+              return (
+                <div
+                  key={p.id}
+                  className={`group flex items-center justify-between w-full text-left px-2 py-1.5 rounded text-xs font-mono transition-colors cursor-pointer
+                    ${isActive
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent'
+                    }`}
+                  onClick={() => assignPattern(p.id)}
+                >
+                  <div className="truncate">
+                    {p.name}
+                    <span className="text-muted-foreground ml-1">({p.steps})</span>
+                  </div>
+                  {!inUse && (
+                    <button
+                      className="shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-destructive/20 text-destructive transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        dispatch({ type: 'REMOVE_PATTERN', patternId: p.id });
+                      }}
+                      title="Delete unused pattern"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
 
             <div className="mt-4">
               <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Kit Sounds</span>
