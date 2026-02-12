@@ -12,7 +12,6 @@ const defaultPattern: DrumPattern = {
   steps: 16,
   grid: (() => {
     const g = createEmptyDrumGrid(16);
-    // Simple beat: kick on 1,5,9,13 / snare on 5,13 / hihat every other
     g['kick'][0] = true; g['kick'][4] = true; g['kick'][8] = true; g['kick'][12] = true;
     g['snare'][4] = true; g['snare'][12] = true;
     for (let i = 0; i < 16; i += 2) g['hihat-closed'][i] = true;
@@ -40,9 +39,19 @@ interface DAWState extends DAWProject {
   isPlaying: boolean;
   currentStep: number;
   selectedTrackId: string | null;
-  selectedPatternId: string | null;
   selectedClipId: string | null;
   activePanel: 'drums' | 'synth' | 'samples';
+}
+
+/** Derive the active pattern from the selected track */
+function getActivePatternId(state: DAWState): string | null {
+  const track = state.tracks.find(t => t.id === state.selectedTrackId);
+  if (!track || track.clips.length === 0) return null;
+  // Use the selected clip, or first clip on the track
+  const clip = state.selectedClipId
+    ? track.clips.find(c => c.id === state.selectedClipId)
+    : track.clips[0];
+  return clip?.patternId ?? null;
 }
 
 const initialState: DAWState = {
@@ -59,7 +68,6 @@ const initialState: DAWState = {
   isPlaying: false,
   currentStep: -1,
   selectedTrackId: 'track-1',
-  selectedPatternId: 'default-pattern',
   selectedClipId: null,
   activePanel: 'drums',
 };
@@ -72,10 +80,9 @@ type Action =
   | { type: 'SET_CURRENT_STEP'; step: number }
   | { type: 'SET_LOOP'; enabled: boolean }
   | { type: 'TOGGLE_DRUM_STEP'; patternId: string; sound: DrumSound; step: number }
-  | { type: 'SELECT_PATTERN'; patternId: string }
   | { type: 'ADD_PATTERN'; pattern: DrumPattern }
   | { type: 'SET_PATTERN_STEPS'; patternId: string; steps: number }
-  | { type: 'ADD_TRACK'; track: Track }
+  | { type: 'ADD_TRACK_WITH_PATTERN' }
   | { type: 'REMOVE_TRACK'; trackId: string }
   | { type: 'SET_TRACK_VOLUME'; trackId: string; volume: number }
   | { type: 'SET_TRACK_PAN'; trackId: string; pan: number }
@@ -84,6 +91,7 @@ type Action =
   | { type: 'RENAME_TRACK'; trackId: string; name: string }
   | { type: 'ADD_CLIP'; trackId: string; clip: Clip }
   | { type: 'REMOVE_CLIP'; trackId: string; clipId: string }
+  | { type: 'SELECT_CLIP'; trackId: string; clipId: string }
   | { type: 'SET_ACTIVE_PANEL'; panel: 'drums' | 'synth' | 'samples' }
   | { type: 'SELECT_TRACK'; trackId: string }
   | { type: 'LOAD_PROJECT'; project: DAWProject };
@@ -114,8 +122,6 @@ function reducer(state: DAWState, action: Action): DAWState {
         }),
       };
     }
-    case 'SELECT_PATTERN':
-      return { ...state, selectedPatternId: action.patternId };
     case 'ADD_PATTERN':
       return { ...state, drumPatterns: [...state.drumPatterns, action.pattern] };
     case 'SET_PATTERN_STEPS': {
@@ -124,7 +130,6 @@ function reducer(state: DAWState, action: Action): DAWState {
         drumPatterns: state.drumPatterns.map(p => {
           if (p.id !== action.patternId) return p;
           const newGrid = createEmptyDrumGrid(action.steps);
-          // Copy existing steps
           for (const sound of Object.keys(p.grid) as DrumSound[]) {
             for (let i = 0; i < Math.min(p.steps, action.steps); i++) {
               newGrid[sound][i] = p.grid[sound][i];
@@ -134,10 +139,51 @@ function reducer(state: DAWState, action: Action): DAWState {
         }),
       };
     }
-    case 'ADD_TRACK':
-      return { ...state, tracks: [...state.tracks, action.track] };
-    case 'REMOVE_TRACK':
-      return { ...state, tracks: state.tracks.filter(t => t.id !== action.trackId) };
+    case 'ADD_TRACK_WITH_PATTERN': {
+      const trackNum = state.tracks.length + 1;
+      const patternId = generateId();
+      const trackId = generateId();
+      const clipId = generateId();
+      const newPattern: DrumPattern = {
+        id: patternId,
+        name: `Pattern ${state.drumPatterns.length + 1}`,
+        steps: 16,
+        grid: createEmptyDrumGrid(16),
+      };
+      const newTrack: Track = {
+        id: trackId,
+        name: `Track ${trackNum}`,
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: clipId,
+          type: 'drum',
+          startBeat: 0,
+          durationBeats: 4,
+          patternId,
+        }],
+      };
+      return {
+        ...state,
+        drumPatterns: [...state.drumPatterns, newPattern],
+        tracks: [...state.tracks, newTrack],
+        selectedTrackId: trackId,
+        selectedClipId: clipId,
+      };
+    }
+    case 'REMOVE_TRACK': {
+      const remaining = state.tracks.filter(t => t.id !== action.trackId);
+      return {
+        ...state,
+        tracks: remaining,
+        selectedTrackId: state.selectedTrackId === action.trackId
+          ? (remaining[0]?.id ?? null)
+          : state.selectedTrackId,
+        selectedClipId: state.selectedTrackId === action.trackId ? null : state.selectedClipId,
+      };
+    }
     case 'SET_TRACK_VOLUME':
       return {
         ...state,
@@ -177,10 +223,18 @@ function reducer(state: DAWState, action: Action): DAWState {
           t.id === action.trackId ? { ...t, clips: t.clips.filter(c => c.id !== action.clipId) } : t
         ),
       };
+    case 'SELECT_CLIP':
+      return { ...state, selectedTrackId: action.trackId, selectedClipId: action.clipId };
     case 'SET_ACTIVE_PANEL':
       return { ...state, activePanel: action.panel };
-    case 'SELECT_TRACK':
-      return { ...state, selectedTrackId: action.trackId };
+    case 'SELECT_TRACK': {
+      const track = state.tracks.find(t => t.id === action.trackId);
+      return {
+        ...state,
+        selectedTrackId: action.trackId,
+        selectedClipId: track?.clips[0]?.id ?? null,
+      };
+    }
     case 'LOAD_PROJECT':
       return { ...state, ...action.project, isPlaying: false, currentStep: -1 };
     default:
@@ -195,6 +249,7 @@ interface DAWContextType {
   stop: () => void;
   pause: () => void;
   previewSound: (sound: DrumSound) => void;
+  getActivePattern: () => DrumPattern | null;
 }
 
 const DAWContext = createContext<DAWContextType | null>(null);
@@ -204,6 +259,12 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  const getActivePattern = useCallback((): DrumPattern | null => {
+    const patternId = getActivePatternId(stateRef.current);
+    if (!patternId) return null;
+    return stateRef.current.drumPatterns.find(p => p.id === patternId) ?? null;
+  }, []);
+
   useEffect(() => {
     audioEngine.setBpm(state.bpm);
   }, [state.bpm]);
@@ -212,10 +273,13 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
     audioEngine.setMasterVolume(state.masterVolume);
   }, [state.masterVolume]);
 
+  // Sync the audio engine's pattern with the active pattern (derived from selected track)
+  const activePatternId = getActivePatternId(state);
   useEffect(() => {
-    const pattern = state.drumPatterns.find(p => p.id === state.selectedPatternId);
+    if (!activePatternId) return;
+    const pattern = state.drumPatterns.find(p => p.id === activePatternId);
     if (pattern) audioEngine.setPattern(pattern);
-  }, [state.drumPatterns, state.selectedPatternId]);
+  }, [state.drumPatterns, activePatternId]);
 
   useEffect(() => {
     audioEngine.onStep((step) => {
@@ -225,10 +289,11 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
 
   const play = useCallback(() => {
     audioEngine.init();
-    const pattern = stateRef.current.drumPatterns.find(
-      p => p.id === stateRef.current.selectedPatternId
-    );
-    if (pattern) audioEngine.setPattern(pattern);
+    const patternId = getActivePatternId(stateRef.current);
+    if (patternId) {
+      const pattern = stateRef.current.drumPatterns.find(p => p.id === patternId);
+      if (pattern) audioEngine.setPattern(pattern);
+    }
     audioEngine.play();
     dispatch({ type: 'SET_PLAYING', playing: true });
   }, []);
@@ -249,7 +314,7 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <DAWContext.Provider value={{ state, dispatch, play, stop, pause, previewSound }}>
+    <DAWContext.Provider value={{ state, dispatch, play, stop, pause, previewSound, getActivePattern }}>
       {children}
     </DAWContext.Provider>
   );
@@ -260,3 +325,5 @@ export function useDAW() {
   if (!ctx) throw new Error('useDAW must be used within DAWProvider');
   return ctx;
 }
+
+export { getActivePatternId };
