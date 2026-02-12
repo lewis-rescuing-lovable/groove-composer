@@ -4,11 +4,17 @@ import { DRUM_SOUNDS, DRUM_LABELS } from '@/lib/types';
 export function StepSequencer() {
   const { state, dispatch, previewSound } = useDAW();
   
-  // Derive pattern from the selected track's clip
+  // Derive pattern and clip from the selected track
   const activePatternId = getActivePatternId(state);
   const pattern = activePatternId
     ? state.drumPatterns.find(p => p.id === activePatternId)
     : null;
+
+  // Find the active clip to get its startBeat for step highlighting
+  const selectedTrack = state.tracks.find(t => t.id === state.selectedTrackId);
+  const activeClip = selectedTrack?.clips.find(c =>
+    state.selectedClipId ? c.id === state.selectedClipId : c.patternId === activePatternId
+  );
 
   if (!pattern) {
     return (
@@ -48,7 +54,13 @@ export function StepSequencer() {
           <div className="flex gap-0.5">
             {Array.from({ length: pattern.steps }, (_, step) => {
               const isActive = pattern.grid[sound][step];
-              const isCurrentStep = state.currentStep === step && state.isPlaying;
+              // Convert global timeline step to local pattern step
+              const clipStartStep = (activeClip?.startBeat ?? 0) * 4;
+              const clipEndStep = clipStartStep + (activeClip?.durationBeats ?? pattern.steps / 4) * 4;
+              const globalStep = state.currentStep;
+              const isInClip = globalStep >= clipStartStep && globalStep < clipEndStep;
+              const localStep = isInClip ? (globalStep - clipStartStep) % pattern.steps : -1;
+              const isCurrentStep = localStep === step && state.isPlaying;
               const isBeatStart = step % 4 === 0;
               return (
                 <button
