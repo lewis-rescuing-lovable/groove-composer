@@ -92,6 +92,9 @@ type Action =
   | { type: 'ADD_CLIP'; trackId: string; clip: Clip }
   | { type: 'REMOVE_CLIP'; trackId: string; clipId: string }
   | { type: 'SELECT_CLIP'; trackId: string; clipId: string }
+  | { type: 'MOVE_CLIP'; fromTrackId: string; toTrackId: string; clipId: string; startBeat: number }
+  | { type: 'RESIZE_CLIP'; trackId: string; clipId: string; durationBeats: number }
+  | { type: 'DUPLICATE_CLIP'; trackId: string; clipId: string }
   | { type: 'SET_ACTIVE_PANEL'; panel: 'drums' | 'synth' | 'samples' }
   | { type: 'SELECT_TRACK'; trackId: string }
   | { type: 'LOAD_PROJECT'; project: DAWProject };
@@ -225,6 +228,58 @@ function reducer(state: DAWState, action: Action): DAWState {
       };
     case 'SELECT_CLIP':
       return { ...state, selectedTrackId: action.trackId, selectedClipId: action.clipId };
+    case 'MOVE_CLIP': {
+      const clampedBeat = Math.max(0, action.startBeat);
+      if (action.fromTrackId === action.toTrackId) {
+        // Same track — just update startBeat
+        return {
+          ...state,
+          tracks: state.tracks.map(t =>
+            t.id === action.fromTrackId
+              ? { ...t, clips: t.clips.map(c => c.id === action.clipId ? { ...c, startBeat: clampedBeat } : c) }
+              : t
+          ),
+        };
+      }
+      // Cross-track move
+      const fromTrack = state.tracks.find(t => t.id === action.fromTrackId);
+      const clip = fromTrack?.clips.find(c => c.id === action.clipId);
+      if (!clip) return state;
+      const movedClip = { ...clip, startBeat: clampedBeat };
+      return {
+        ...state,
+        selectedTrackId: action.toTrackId,
+        selectedClipId: action.clipId,
+        tracks: state.tracks.map(t => {
+          if (t.id === action.fromTrackId) return { ...t, clips: t.clips.filter(c => c.id !== action.clipId) };
+          if (t.id === action.toTrackId) return { ...t, clips: [...t.clips, movedClip] };
+          return t;
+        }),
+      };
+    }
+    case 'RESIZE_CLIP': {
+      const dur = Math.max(1, action.durationBeats);
+      return {
+        ...state,
+        tracks: state.tracks.map(t =>
+          t.id === action.trackId
+            ? { ...t, clips: t.clips.map(c => c.id === action.clipId ? { ...c, durationBeats: dur } : c) }
+            : t
+        ),
+      };
+    }
+    case 'DUPLICATE_CLIP': {
+      const srcTrack = state.tracks.find(t => t.id === action.trackId);
+      const srcClip = srcTrack?.clips.find(c => c.id === action.clipId);
+      if (!srcClip) return state;
+      const newClip = { ...srcClip, id: generateId(), startBeat: srcClip.startBeat + srcClip.durationBeats };
+      return {
+        ...state,
+        tracks: state.tracks.map(t =>
+          t.id === action.trackId ? { ...t, clips: [...t.clips, newClip] } : t
+        ),
+      };
+    }
     case 'SET_ACTIVE_PANEL':
       return { ...state, activePanel: action.panel };
     case 'SELECT_TRACK': {
