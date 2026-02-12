@@ -328,13 +328,14 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
     audioEngine.setMasterVolume(state.masterVolume);
   }, [state.masterVolume]);
 
-  // Sync the audio engine's pattern with the active pattern (derived from selected track)
-  const activePatternId = getActivePatternId(state);
+  // Sync all tracks and patterns to the audio engine
   useEffect(() => {
-    if (!activePatternId) return;
-    const pattern = state.drumPatterns.find(p => p.id === activePatternId);
-    if (pattern) audioEngine.setPattern(pattern);
-  }, [state.drumPatterns, activePatternId]);
+    audioEngine.setTracks(state.tracks, state.drumPatterns);
+  }, [state.tracks, state.drumPatterns]);
+
+  useEffect(() => {
+    audioEngine.setLoopEnabled(state.loopEnabled);
+  }, [state.loopEnabled]);
 
   useEffect(() => {
     audioEngine.onStep((step) => {
@@ -344,11 +345,7 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
 
   const play = useCallback(() => {
     audioEngine.init();
-    const patternId = getActivePatternId(stateRef.current);
-    if (patternId) {
-      const pattern = stateRef.current.drumPatterns.find(p => p.id === patternId);
-      if (pattern) audioEngine.setPattern(pattern);
-    }
+    audioEngine.setTracks(stateRef.current.tracks, stateRef.current.drumPatterns);
     audioEngine.play();
     dispatch({ type: 'SET_PLAYING', playing: true });
   }, []);
