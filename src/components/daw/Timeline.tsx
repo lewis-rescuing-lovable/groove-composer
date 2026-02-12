@@ -89,10 +89,15 @@ function TrackLane({ track, beatsToShow, beatWidth }: { track: TrackType; beatsT
     }
   };
 
+  const isSelected = state.selectedTrackId === track.id;
+
   return (
-    <div className="flex border-b border-border group">
+    <div
+      className={`flex border-b border-border group cursor-pointer ${isSelected ? 'ring-1 ring-inset ring-primary/50' : ''}`}
+      onClick={() => dispatch({ type: 'SELECT_TRACK', trackId: track.id })}
+    >
       {/* Track controls */}
-      <div className="w-52 shrink-0 px-2 py-1.5 flex flex-col gap-1 border-r border-border bg-card">
+      <div className={`w-52 shrink-0 px-2 py-1.5 flex flex-col gap-1 border-r border-border ${isSelected ? 'bg-primary/5' : 'bg-card'}`}>
         <div className="flex items-center gap-1">
           <input
             value={track.name}
