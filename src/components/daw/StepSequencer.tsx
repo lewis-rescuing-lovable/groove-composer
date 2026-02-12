@@ -1,14 +1,19 @@
-import { useDAW } from '@/stores/daw-store';
-import { DRUM_SOUNDS, DRUM_LABELS, DrumSound } from '@/lib/types';
+import { useDAW, getActivePatternId } from '@/stores/daw-store';
+import { DRUM_SOUNDS, DRUM_LABELS } from '@/lib/types';
 
 export function StepSequencer() {
   const { state, dispatch, previewSound } = useDAW();
-  const pattern = state.drumPatterns.find(p => p.id === state.selectedPatternId);
+  
+  // Derive pattern from the selected track's clip
+  const activePatternId = getActivePatternId(state);
+  const pattern = activePatternId
+    ? state.drumPatterns.find(p => p.id === activePatternId)
+    : null;
 
   if (!pattern) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-        No pattern selected
+      <div className="flex items-center justify-center h-full text-muted-foreground text-sm font-mono">
+        Select a track with a drum clip to edit its pattern
       </div>
     );
   }

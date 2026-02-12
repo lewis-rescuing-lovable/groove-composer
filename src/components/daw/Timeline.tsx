@@ -1,5 +1,5 @@
 import { useDAW } from '@/stores/daw-store';
-import { generateId, Track as TrackType } from '@/lib/types';
+import { Track as TrackType } from '@/lib/types';
 import { Plus, Volume2, VolumeX, Headphones, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -10,16 +10,7 @@ export function Timeline() {
   const beatWidth = 60;
 
   const addTrack = () => {
-    const track: TrackType = {
-      id: generateId(),
-      name: `Track ${state.tracks.length + 1}`,
-      volume: 0.8,
-      pan: 0,
-      muted: false,
-      solo: false,
-      clips: [],
-    };
-    dispatch({ type: 'ADD_TRACK', track });
+    dispatch({ type: 'ADD_TRACK_WITH_PATTERN' });
   };
 
   // Performance warning

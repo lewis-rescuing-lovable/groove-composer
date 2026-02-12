@@ -1,10 +1,12 @@
-import { useDAW } from '@/stores/daw-store';
+import { useDAW, getActivePatternId } from '@/stores/daw-store';
 import { generateId, createEmptyDrumGrid, DRUM_LABELS, DRUM_SOUNDS } from '@/lib/types';
 import { Drum, Music, FileAudio, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function InstrumentSidebar() {
   const { state, dispatch, previewSound } = useDAW();
+
+  const activePatternId = getActivePatternId(state);
 
   const addNewPattern = () => {
     const id = generateId();
@@ -17,7 +19,6 @@ export function InstrumentSidebar() {
         grid: createEmptyDrumGrid(16),
       },
     });
-    dispatch({ type: 'SELECT_PATTERN', patternId: id });
   };
 
   return (
@@ -56,18 +57,17 @@ export function InstrumentSidebar() {
             </div>
 
             {state.drumPatterns.map(p => (
-              <button
+              <div
                 key={p.id}
-                onClick={() => dispatch({ type: 'SELECT_PATTERN', patternId: p.id })}
                 className={`w-full text-left px-2 py-1.5 rounded text-xs font-mono transition-colors
-                  ${state.selectedPatternId === p.id
+                  ${activePatternId === p.id
                     ? 'bg-primary/20 text-primary'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent'
+                    : 'text-sidebar-foreground'
                   }`}
               >
                 {p.name}
                 <span className="text-muted-foreground ml-1">({p.steps} steps)</span>
-              </button>
+              </div>
             ))}
 
             <div className="mt-4">
