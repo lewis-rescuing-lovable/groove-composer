@@ -22,6 +22,7 @@ Deployed automatically to GitHub Pages on every push to `main`:
 - [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
 - [shadcn/ui](https://ui.shadcn.com/) + [Tailwind CSS](https://tailwindcss.com/)
 - [Vitest](https://vitest.dev/) + Testing Library — unit testing
+- [Playwright](https://playwright.dev/) — end-to-end testing
 - [npm](https://www.npmjs.com/) — package manager
 
 ## 📋 Prerequisites
@@ -46,15 +47,82 @@ Open http://localhost:8080 to view the app in your browser.
 
 ## 📜 Available Scripts
 
-| Command              | Description                                |
-| -------------------- | ------------------------------------------ |
-| `npm run dev`        | Start the development server               |
-| `npm run build`      | Create a production build in `dist/`       |
-| `npm run preview`    | Preview the production build locally       |
-| `npm run lint`       | Run ESLint                                 |
-| `npm run typecheck`  | Run TypeScript type checking               |
-| `npm run test`       | Run tests once (Vitest)                    |
-| `npm run test:watch` | Run tests in watch mode                    |
+| Command                     | Description                                       |
+| --------------------------- | ------------------------------------------------- |
+| `npm run dev`               | Start the development server                      |
+| `npm run build`             | Create a production build in `dist/`              |
+| `npm run preview`           | Preview the production build locally              |
+| `npm run lint`              | Run ESLint                                        |
+| `npm run typecheck`         | Run TypeScript type checking                      |
+| `npm run test`              | Run unit tests once (Vitest)                      |
+| `npm run test:watch`        | Run unit tests in watch mode                      |
+| `npm run test:coverage`     | Run unit tests with coverage report               |
+| `npm run test:e2e`          | Run Playwright E2E tests (dev server auto-starts) |
+| `npm run test:e2e:ui`       | Run Playwright with the interactive UI            |
+| `npm run test:e2e:debug`    | Run Playwright step-by-step in the inspector      |
+| `npm run test:e2e:headed`   | Run Playwright headed (visible browser)           |
+| `npm run test:e2e:build`    | Build, then run E2E against the production build  |
+| `npm run test:e2e:build:debug` | Build, then debug E2E against production build |
+
+## 🧪 Testing
+
+### Unit tests (Vitest + Testing Library)
+
+```sh
+npm run test            # once
+npm run test:watch      # watch mode
+npm run test:coverage   # with coverage report (thresholds enforced)
+```
+
+Coverage thresholds are enforced in `vitest.config.ts` (lines/functions/statements
+≥ 70%, branches ≥ 70%). The coverage report is written to `coverage/`.
+
+### End-to-end tests (Playwright)
+
+```sh
+npm run test:e2e        # full suite against the dev server
+```
+
+The E2E suite lives in [`e2e/`](e2e/) and covers:
+
+- **`e2e/daw.spec.ts`** — functional flows: loading the DAW, adding tracks &
+  patterns (making music), renaming tracks, toggling mute/solo, switching panels,
+  editing BPM, transport (play/stop), and duplicating clips.
+- **`e2e/performance.spec.ts`** — performance & memory monitoring: FPS,
+  long-task count, and JS heap usage during idle, playback, and heavy pattern
+  toggling. Metrics are logged inline and guarded by generous thresholds.
+- **`e2e/build.spec.ts`** — smoke tests against the production build.
+
+First-time setup (downloads the Chromium browser):
+
+```sh
+npx playwright install chromium
+```
+
+### Debugging / ejecting the Playwright build
+
+Playwright ships an inspector + UI for stepping through and debugging tests:
+
+```sh
+npm run test:e2e:debug    # step through tests in the inspector
+npm run test:e2e:ui       # interactive UI runner
+```
+
+To "eject" and debug issues against the **production bundle** (not the dev
+server), the dedicated build config `playwright.build.config.ts` serves the
+built app via `vite preview`:
+
+```sh
+npm run test:e2e:build         # run build smoke tests
+npm run test:e2e:build:debug   # debug them headed with the inspector
+```
+
+On failure, Playwright writes a trace, screenshot, and error context under
+`test-results/`. Open a trace with:
+
+```sh
+npx playwright show-trace test-results/<test-dir>/trace.zip
+```
 
 ## 🔀 Git Workflow
 

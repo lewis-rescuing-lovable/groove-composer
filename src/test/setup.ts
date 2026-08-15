@@ -87,7 +87,7 @@ class MockAudioContext {
   resume() { return Promise.resolve(); }
   close() { return Promise.resolve(); }
 }
-(globalThis as any).AudioContext = MockAudioContext;
-(globalThis as any).webkitAudioContext = MockAudioContext;
+(globalThis as unknown as { AudioContext: unknown }).AudioContext = MockAudioContext;
+(globalThis as unknown as { webkitAudioContext: unknown }).webkitAudioContext = MockAudioContext;
 
 // window.setInterval needed by audio engine scheduling (returned by jsdom already)

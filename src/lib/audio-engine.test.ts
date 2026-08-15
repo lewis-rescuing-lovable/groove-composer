@@ -83,7 +83,7 @@ function installAudioMock() {
 
 beforeEach(() => {
   installAudioMock();
-  vi.spyOn(window, 'setInterval').mockReturnValue(123 as unknown as number);
+  vi.spyOn(window, 'setInterval').mockReturnValue(123 as never);
   vi.spyOn(window, 'clearInterval').mockImplementation(() => {});
 });
 

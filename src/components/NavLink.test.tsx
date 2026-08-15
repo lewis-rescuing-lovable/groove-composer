@@ -6,7 +6,7 @@ import { NavLink } from './NavLink';
 function renderNavLink(props: Record<string, unknown> = {}) {
   return render(
     <MemoryRouter>
-      <NavLink to="/test" {...(props as never)}>
+      <NavLink to="/test" {...(props as { className?: string; activeClassName?: string })}>
         Home
       </NavLink>
     </MemoryRouter>,
