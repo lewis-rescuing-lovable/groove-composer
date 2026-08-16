@@ -13,8 +13,9 @@ export const DRUM_LABELS: Record<DrumSound, string> = {
   'rimshot': 'Rimshot',
 };
 
-export type WaveformType = 'sine' | 'square' | 'sawtooth' | 'triangle';
 export type ClipType = 'drum' | 'synth' | 'sample';
+
+export type WaveformType = 'sine' | 'square' | 'sawtooth' | 'triangle';
 
 export interface DrumPattern {
   id: string;
