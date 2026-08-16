@@ -26,6 +26,8 @@ class AudioEngine {
   private lookahead = 0.1;
   private scheduleInterval = 25;
   private sampleLoader: SampleLoader | null = null;
+  /** Currently-playing sample sources, so stop() can silence them. */
+  private activeSources: Set<AudioBufferSourceNode> = new Set();
 
   get context(): AudioContext | null { return this.ctx; }
   get analyserNode(): AnalyserNode | null { return this.analyser; }
@@ -294,6 +296,10 @@ class AudioEngine {
       const dest = this.trackGains.get(track.id) || this.masterGain!;
 
       for (const clip of track.clips) {
+        if (clip.type === 'sample') {
+          this.scheduleSampleClip(clip, globalStep, time, dest);
+          continue;
+        }
         if (clip.type !== 'drum') continue;
         if (!clip.patternId) continue;
 
@@ -323,6 +329,52 @@ class AudioEngine {
     }, Math.max(0, delay));
   }
 
+  /** and stop at the clip end.
+   */
+  private scheduleSampleClip(clip: Clip, globalStep: number, time: number, dest: AudioNode) {
+    if (!clip.sampleId) return;
+    const clipStartStep = clip.startBeat * 4;
+    const clipEndStep = (clip.startBeat + clip.durationBeats) * 4;
+    if (globalStep < clipStartStep || globalStep >= clipEndStep) return;
+
+    if (clip.loop) {
+      // Loop: restart the sample at the start of each beat within the clip.
+      const beatStep = clip.startBeat * 4;
+      if (globalStep === beatStep || (globalStep - beatStep) % 4 === 0) {
+        const clipEndTime = time + (clipEndStep - globalStep) * this.getStepDuration();
+        this.playSampleAt(clip.sampleId, time, dest, true, clipEndTime);
+      }
+    } else if (globalStep === clipStartStep) {
+      // One-shot: fire exactly once at the clip start.
+      this.playSampleAt(clip.sampleId, time, dest, false);
+    }
+  }
+
+  /**
+   * Play a fetched sample at a specific time. Loads (and caches) the buffer on
+   * first use, then schedules it through the given destination. When `loop` is
+   * true the source loops until `stopTime` (or until the engine is stopped).
+   * Active sources are tracked so `stop()` can silence them.
+   */
+  private async playSampleAt(sampleId: string, time: number, dest: AudioNode, loop: boolean, stopTime?: number): Promise<void> {
+    if (!this.sampleLoader) return;
+    const entry = await this.sampleLoader.load(sampleId);
+    if (entry.status !== 'ready' || !entry.buffer) return;
+    const ctx = this.ctx!;
+    const source = ctx.createBufferSource();
+    source.buffer = entry.buffer;
+    source.loop = loop;
+    source.connect(dest);
+    this.activeSources.add(source);
+    source.onended = () => this.activeSources.delete(source);
+    source.start(time);
+    if (loop && stopTime !== undefined) {
+      source.stop(stopTime);
+    }
+    source.connect(dest);
+    source.start(time);
+  }
+
   play() {
     if (this.isPlaying) return;
     this.init();
@@ -340,6 +392,7 @@ class AudioEngine {
       clearInterval(this.schedulerTimer);
       this.schedulerTimer = null;
     }
+    this.silenceAllSources();
     this.onStepCallback?.(-1);
   }
 
@@ -349,6 +402,19 @@ class AudioEngine {
       clearInterval(this.schedulerTimer);
       this.schedulerTimer = null;
     }
+    this.silenceAllSources();
+  }
+
+  /** Stop every currently-playing sample source so no audio lingers. */
+  private silenceAllSources() {
+    for (const source of this.activeSources) {
+      try {
+        source.stop();
+      } catch {
+        // Already stopped — ignore.
+      }
+    }
+    this.activeSources.clear();
   }
 
   previewSound(sound: DrumSound) {

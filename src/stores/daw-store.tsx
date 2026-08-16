@@ -124,9 +124,13 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
     await audioEngine.playSample(sampleId);
   }, []);
 
+  const addSampleTrack = useCallback((sampleId: string, name: string, loop: boolean) => {
+    dispatch({ type: 'ADD_SAMPLE_TRACK', sampleId, name, loop });
+  }, []);
+
   return (
     <DAWContext.Provider
-      value={{ state, dispatch, play, stop, pause, previewSound, previewSample, getActivePattern, saveProject, loadProject, resetProject }}
+      value={{ state, dispatch, play, stop, pause, previewSound, previewSample, addSampleTrack, getActivePattern, saveProject, loadProject, resetProject }}
     >
       {children}
     </DAWContext.Provider>

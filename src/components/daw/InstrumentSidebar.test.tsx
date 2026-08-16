@@ -32,6 +32,15 @@ describe('InstrumentSidebar', () => {
     expect(screen.getByText('Kalimba')).toBeInTheDocument();
   });
 
+  it('shows loop/one-shot controls and add-track for samples', () => {
+    renderSidebar();
+    fireEvent.click(screen.getByText('Samples'));
+    // Each sample card has One-shot / Loop toggles and an Add track button
+    expect(screen.getAllByText('One-shot').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Loop').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Add track').length).toBeGreaterThan(0);
+  });
+
   it('shows the default pattern in the drums panel', () => {
     renderSidebar();
     // "Drums" appears as both the panel tab and a pattern name

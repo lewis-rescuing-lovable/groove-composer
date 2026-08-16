@@ -111,6 +111,7 @@ export type Action =
   | { type: 'ASSIGN_PATTERN_TO_CLIP'; trackId: string; clipId: string; patternId: string }
   | { type: 'SET_PATTERN_STEPS'; patternId: string; steps: number }
   | { type: 'ADD_TRACK_WITH_PATTERN' }
+  | { type: 'ADD_SAMPLE_TRACK'; sampleId: string; name: string; loop: boolean }
   | { type: 'REMOVE_TRACK'; trackId: string }
   | { type: 'SET_TRACK_VOLUME'; trackId: string; volume: number }
   | { type: 'SET_TRACK_PAN'; trackId: string; pan: number }
@@ -222,6 +223,32 @@ export function reducer(state: DAWState, action: Action): DAWState {
       return {
         ...state,
         drumPatterns: [...state.drumPatterns, newPattern],
+        tracks: [...state.tracks, newTrack],
+        selectedTrackId: trackId,
+        selectedClipId: clipId,
+      };
+    }
+    case 'ADD_SAMPLE_TRACK': {
+      const trackId = generateId();
+      const clipId = generateId();
+      const newTrack: Track = {
+        id: trackId,
+        name: action.name,
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: clipId,
+          type: 'sample',
+          startBeat: 0,
+          durationBeats: 4,
+          sampleId: action.sampleId,
+          loop: action.loop,
+        }],
+      };
+      return {
+        ...state,
         tracks: [...state.tracks, newTrack],
         selectedTrackId: trackId,
         selectedClipId: clipId,
@@ -373,6 +400,7 @@ export interface DAWContextType {
   pause: () => void;
   previewSound: (sound: DrumSound) => void;
   previewSample: (sampleId: string) => Promise<void>;
+  addSampleTrack: (sampleId: string, name: string, loop: boolean) => void;
   getActivePattern: () => DrumPattern | null;
   saveProject: () => void;
   loadProject: () => boolean;
