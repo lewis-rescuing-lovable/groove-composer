@@ -2,24 +2,48 @@ import { useEffect, useRef, useCallback } from 'react';
 import { audioEngine } from '@/lib/audio-engine';
 import { useDAW } from '@/stores/daw-store-context';
 
-export function SpectrumAnalyzer() {
+/**
+ * Live frequency visualization of the master output. Reads from the shared
+ * audio engine's analyser node. When `demoMode` is set, it synthesizes a
+ * moving spectrum instead — useful for Storybook, where there is no audio
+ * context or user gesture to start playback.
+ */
+export function SpectrumAnalyzer({ demoMode = false }: { demoMode?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
   const { state } = useDAW();
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    const analyser = audioEngine.analyserNode;
-    if (!canvas || !analyser) {
+    if (!canvas) {
       animRef.current = requestAnimationFrame(draw);
       return;
     }
 
     const ctx = canvas.getContext('2d')!;
     const { width, height } = canvas;
-    const bufferLength = analyser.frequencyBinCount;
+
+    // In demo mode, synthesize a moving spectrum (a sweeping peak + noise) so
+    // the analyzer animates without an audio context.
+    const bufferLength = demoMode ? 64 : audioEngine.analyserNode?.frequencyBinCount ?? 0;
     const dataArray = new Uint8Array(bufferLength);
-    analyser.getByteFrequencyData(dataArray);
+
+    if (demoMode) {
+      const t = performance.now() / 1000;
+      for (let i = 0; i < bufferLength; i++) {
+        // A peak that sweeps across the spectrum, plus a little noise.
+        const peak = Math.exp(-Math.pow((i - (bufferLength / 2) * (1 + 0.6 * Math.sin(t * 0.8))) / (bufferLength / 8), 2));
+        const noise = Math.random() * 0.15;
+        dataArray[i] = Math.min(255, Math.round((peak * 0.9 + noise) * 255));
+      }
+    } else {
+      const analyser = audioEngine.analyserNode;
+      if (!analyser) {
+        animRef.current = requestAnimationFrame(draw);
+        return;
+      }
+      analyser.getByteFrequencyData(dataArray);
+    }
 
     ctx.clearRect(0, 0, width, height);
 
@@ -38,7 +62,7 @@ export function SpectrumAnalyzer() {
     }
 
     animRef.current = requestAnimationFrame(draw);
-  }, []);
+  }, [demoMode]);
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(draw);

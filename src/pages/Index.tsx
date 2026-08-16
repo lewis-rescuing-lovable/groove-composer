@@ -2,6 +2,8 @@ import { DAWProvider } from '@/stores/daw-store';
 import { useDAW } from '@/stores/daw-store-context';
 import { TopBar } from '@/components/daw/TopBar';
 import { InstrumentSidebar } from '@/components/daw/InstrumentSidebar';
+import { DrumsPanel, SamplesPanel } from '@/components/daw/panels';
+import { Drum, FileAudio } from 'lucide-react';
 import { Timeline } from '@/components/daw/Timeline';
 import { StepSequencer } from '@/components/daw/StepSequencer';
 import { SpectrumAnalyzer } from '@/components/daw/SpectrumAnalyzer';
@@ -43,7 +45,12 @@ const Index = () => {
       <div className="flex flex-col h-screen overflow-hidden">
         <TopBar />
         <div className="flex flex-1 overflow-hidden">
-          <InstrumentSidebar />
+          <InstrumentSidebar
+            panels={[
+              { key: 'drums', label: 'Drums', icon: Drum, content: DrumsPanel },
+              { key: 'samples', label: 'Samples', icon: FileAudio, content: SamplesPanel },
+            ]}
+          />
           <div className="flex-1 flex flex-col overflow-hidden">
             <Timeline />
             <BottomPanel />

@@ -22,6 +22,7 @@ export default defineConfig({
         "src/vite-env.d.ts",
         "src/components/ui/**",
         "src/test/**",
+        "src/stories/**",
         "src/**/*.{test,spec}.{ts,tsx}",
       ],
       thresholds: {

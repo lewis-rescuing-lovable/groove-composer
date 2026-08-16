@@ -18,7 +18,7 @@ The app is split into four main areas:
 | Area | What it does |
 | ---- | ------------ |
 | **Top bar** | Project name, BPM, time signature, transport (play/stop/loop), autosave controls, save/load/reset, master volume |
-| **Instrument sidebar** | Three panels — **Drums**, **Synth**, **Samples** — for patterns, kit sounds, and sample tracks |
+| **Instrument sidebar** | Two panels — **Drums** and **Samples** — for patterns, kit sounds, and sample tracks (the sidebar is composable; the **Synth** tab is omitted until it's implemented) |
 | **Timeline** | Your arrangement: tracks, clips, mute/solo, volume, and the beat ruler |
 | **Editor + Spectrum** | The step sequencer for the selected pattern, plus a live spectrum analyzer |
 
@@ -67,7 +67,7 @@ to each other in the top bar.
 
 ## 2. Instrument sidebar
 
-The sidebar has three tabs. The **Drums** tab is active by default.
+The sidebar has two tabs. The **Drums** tab is active by default.
 
 ### Drums
 
@@ -79,9 +79,10 @@ The sidebar has three tabs. The **Drums** tab is active by default.
 
 ### Synth
 
-![Synth panel](sidebar-synth.png)
-
-The synthesizer is coming soon — this panel is a placeholder for now.
+The synthesizer isn't part of the app yet. The sidebar is **composable** — it
+only shows the panels it's given — so the Synth tab is omitted entirely until
+the synth is implemented (no placeholder). A placeholder panel exists in the
+component library (Storybook) so you can see how it will slot in.
 
 ### Samples
 

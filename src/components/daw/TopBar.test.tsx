@@ -89,6 +89,19 @@ describe('TopBar', () => {
     expect(screen.getByText('4/4')).toBeInTheDocument();
   });
 
+  it('toggles master mute via the volume button', () => {
+    renderTopBar();
+    // Initially unmuted: shows the volume icon and "Mute master" label
+    const muteBtn = screen.getByRole('button', { name: 'Mute master' });
+    expect(muteBtn).toBeInTheDocument();
+    // Click to mute
+    fireEvent.click(muteBtn);
+    expect(screen.getByRole('button', { name: 'Unmute master' })).toBeInTheDocument();
+    // Click to unmute
+    fireEvent.click(screen.getByRole('button', { name: 'Unmute master' }));
+    expect(screen.getByRole('button', { name: 'Mute master' })).toBeInTheDocument();
+  });
+
   it('load with nothing saved logs an info message', () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     window.localStorage.removeItem('groove-composer:project');

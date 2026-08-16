@@ -124,6 +124,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Build Storybook
+        run: npm run build-storybook
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:

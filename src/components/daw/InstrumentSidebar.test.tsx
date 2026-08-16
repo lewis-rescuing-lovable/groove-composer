@@ -2,11 +2,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DAWProvider } from '@/stores/daw-store';
 import { InstrumentSidebar } from './InstrumentSidebar';
+import { DrumsPanel, SamplesPanel, SynthPanel } from './panels';
+import { Drum, FileAudio, Music } from 'lucide-react';
 
-function renderSidebar() {
+const appPanels = [
+  { key: 'drums', label: 'Drums', icon: Drum, content: DrumsPanel },
+  { key: 'samples', label: 'Samples', icon: FileAudio, content: SamplesPanel },
+];
+
+const allPanels = [
+  { key: 'drums', label: 'Drums', icon: Drum, content: DrumsPanel },
+  { key: 'synth', label: 'Synth', icon: Music, content: SynthPanel },
+  { key: 'samples', label: 'Samples', icon: FileAudio, content: SamplesPanel },
+];
+
+function renderSidebar(panels = appPanels) {
   return render(
     <DAWProvider>
-      <InstrumentSidebar />
+      <InstrumentSidebar panels={panels} />
     </DAWProvider>,
   );
 }
@@ -14,18 +27,17 @@ function renderSidebar() {
 describe('InstrumentSidebar', () => {
   beforeEach(() => vi.restoreAllMocks());
 
-  it('renders panel tabs', () => {
+  it('renders only the provided panel tabs', () => {
     renderSidebar();
-    // Panel tabs contain the labels; "Drums" also appears in helper text, so use getAllByText
+    // Drums + Samples tabs are present; Synth is omitted (no "coming soon")
     expect(screen.getAllByText('Drums').length).toBeGreaterThan(0);
-    expect(screen.getByText('Synth')).toBeInTheDocument();
     expect(screen.getByText('Samples')).toBeInTheDocument();
+    expect(screen.queryByText('Synth')).not.toBeInTheDocument();
+    expect(screen.queryByText('Synthesizer coming soon')).not.toBeInTheDocument();
   });
 
-  it('switches to synth and samples panels', () => {
+  it('switches to the samples panel', () => {
     renderSidebar();
-    fireEvent.click(screen.getByText('Synth'));
-    expect(screen.getByText('Synthesizer coming soon')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Samples'));
     expect(screen.getByText('Sample Library')).toBeInTheDocument();
     // A curated sample from the library is listed
@@ -41,6 +53,13 @@ describe('InstrumentSidebar', () => {
     expect(screen.getAllByText('Add track').length).toBeGreaterThan(0);
   });
 
+  it('renders a synth tab when a SynthPanel is provided', () => {
+    renderSidebar(allPanels);
+    expect(screen.getByText('Synth')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Synth'));
+    expect(screen.getByText('Synthesizer coming soon')).toBeInTheDocument();
+  });
+
   it('shows the default pattern in the drums panel', () => {
     renderSidebar();
     // "Drums" appears as both the panel tab and a pattern name
@@ -53,8 +72,8 @@ describe('InstrumentSidebar', () => {
   it('adds a new pattern when + is clicked', () => {
     renderSidebar();
     const buttons = screen.getAllByRole('button');
-    // First 3 buttons are the panel tabs (Drums, Synth, Samples); index 3 is the "+" add-pattern button
-    fireEvent.click(buttons[3]);
+    // First 2 buttons are the panel tabs (Drums, Samples); index 2 is the "+" add-pattern button
+    fireEvent.click(buttons[2]);
     expect(screen.getByText('Pattern 3')).toBeInTheDocument();
   });
 

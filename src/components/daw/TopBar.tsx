@@ -1,4 +1,4 @@
-import { Play, Pause, Square, Repeat, Volume2, Save, FolderOpen, RotateCcw } from 'lucide-react';
+import { Play, Pause, Square, Repeat, Volume2, VolumeX, Save, FolderOpen, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { useDAW } from '@/stores/daw-store-context';
 import { Slider } from '@/components/ui/slider';
@@ -111,7 +111,16 @@ export function TopBar() {
 
       {/* Master Volume */}
       <div className="flex items-center gap-2 ml-auto">
-        <Volume2 className="h-4 w-4 text-muted-foreground" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => dispatch({ type: 'SET_MASTER_MUTED', muted: !state.masterMuted })}
+          className={`h-8 w-8 ${state.masterMuted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
+          title={state.masterMuted ? 'Unmute master' : 'Mute master'}
+          aria-label={state.masterMuted ? 'Unmute master' : 'Mute master'}
+        >
+          {state.masterMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </Button>
         <Slider
           value={[state.masterVolume * 100]}
           onValueChange={([v]) => dispatch({ type: 'SET_MASTER_VOLUME', volume: v / 100 })}

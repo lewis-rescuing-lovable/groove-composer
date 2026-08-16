@@ -78,7 +78,6 @@ export const selectors = {
   stop: "button:has(svg.lucide-square)",
   mute: "button:text-is('M')",
   solo: "button:text-is('S')",
-  synthTab: "button:has-text('Synth')",
   samplesTab: "button:has-text('Samples')",
   drumsTab: "button:has-text('Drums')",
 };
@@ -89,7 +88,11 @@ export const selectors = {
  * quality checks in one place and reuse them across e2e tests.
  */
 
-/** Asserts the Synth panel renders its expected content. */
+/**
+ * Asserts the Synth panel renders its expected content. The Synth tab is not
+ * part of the app's sidebar (it's omitted until the synth is implemented), so
+ * this fixture is only used by Storybook-driven checks / future synth work.
+ */
 export async function checkSynthesizer(page: Page) {
   await expect(page.getByText("Synthesizer coming soon")).toBeVisible();
 }
