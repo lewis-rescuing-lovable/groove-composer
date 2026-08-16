@@ -1,6 +1,10 @@
 # Groove Composer
 
-A web-based music composition tool built with React, TypeScript, Vite, and shadcn/ui.
+A web-based music composition tool with a step sequencer, timeline arranger, and real-time spectrum analyzer.
+
+![Groove Composer](docs/user-guide/hero.png)
+
+> 📖 New here? Read the **[User Guide](docs/user-guide/README.md)** for a tour of every panel and how to make your first groove.
 
 ## 🚀 Live Site
 

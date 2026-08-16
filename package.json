@@ -19,7 +19,8 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:build": "npm run build && playwright test -c playwright.build.config.ts",
-    "test:e2e:build:debug": "npm run build && playwright test -c playwright.build.config.ts --debug --headed"
+    "test:e2e:build:debug": "npm run build && playwright test -c playwright.build.config.ts --debug --headed",
+    "regenerate:user-guide": "node scripts/capture-guide-screenshots.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
