@@ -5,9 +5,12 @@
  * `SAMPLE_LIBRARY` — no per-sample code changes. Samples are fetched at runtime
  * from a remote endpoint, validated, and cached by `SampleLoader`.
  *
- * All samples are sourced from the OLPC Berklee Sound Library
- * (https://wiki.laptop.org/go/Sound_samples), licensed CC BY 3.0. Attribution
- * is recorded per-sample below and in `docs/sample-attribution.md`.
+ * Most samples are sourced from the OLPC Berklee Sound Library
+ * (https://wiki.laptop.org/go/Sound_samples), licensed CC BY 3.0. The cat meow
+ * samples are sourced from the Kaggle "Audio Cats and Dogs" dataset
+ * (https://www.kaggle.com/datasets/mmoreaux/audio-cats-and-dogs), licensed
+ * CC BY-SA 3.0. Attribution is recorded per-sample below and in
+ * `docs/sample-attribution.md`.
  */
 
 export type SampleCategory = 'melodic' | 'percussive' | 'fx';
@@ -29,6 +32,10 @@ export interface SampleDef {
 const BERKLEE_BASE = 'https://raw.githubusercontent.com/Tonejs/audio/master/berklee';
 const BERKLEE_LICENSE = 'CC BY 3.0';
 const BERKLEE_ATTRIBUTION = 'OLPC Berklee Sound Library (CC BY 3.0)';
+
+const KAGGLE_CAT_BASE = 'https://raw.githubusercontent.com/haydenroche5/meow_dataset/master/meow';
+const KAGGLE_CAT_LICENSE = 'CC BY-SA 3.0';
+const KAGGLE_CAT_ATTRIBUTION = 'Kaggle "Audio Cats and Dogs" dataset (CC BY-SA 3.0)';
 
 /**
  * Curated, child-safe, non-drum textures. Kept small and melodic/percussive so
@@ -124,6 +131,33 @@ export const SAMPLE_LIBRARY: SampleDef[] = [
     sizeBytes: 7557,
     license: BERKLEE_LICENSE,
     attribution: BERKLEE_ATTRIBUTION,
+  },
+  {
+    id: 'cat-meow',
+    name: 'Cat Meow',
+    category: 'fx',
+    url: `${KAGGLE_CAT_BASE}/kaggle_cat_10_0.wav`,
+    sizeBytes: 33370,
+    license: KAGGLE_CAT_LICENSE,
+    attribution: KAGGLE_CAT_ATTRIBUTION,
+  },
+  {
+    id: 'cat-meow-2',
+    name: 'Cat Meow 2',
+    category: 'fx',
+    url: `${KAGGLE_CAT_BASE}/kaggle_cat_11_0.wav`,
+    sizeBytes: 40986,
+    license: KAGGLE_CAT_LICENSE,
+    attribution: KAGGLE_CAT_ATTRIBUTION,
+  },
+  {
+    id: 'cat-meow-3',
+    name: 'Cat Meow 3',
+    category: 'fx',
+    url: `${KAGGLE_CAT_BASE}/kaggle_cat_12_0.wav`,
+    sizeBytes: 38062,
+    license: KAGGLE_CAT_LICENSE,
+    attribution: KAGGLE_CAT_ATTRIBUTION,
   },
 ];
 
