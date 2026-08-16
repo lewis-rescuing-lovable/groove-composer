@@ -1,5 +1,5 @@
 import { memo, useState, useCallback } from 'react';
-import { useDAW, getActivePatternId } from '@/stores/daw-store';
+import { useDAW, getActivePatternId } from '@/stores/daw-store-context';
 import { DRUM_SOUNDS, DRUM_LABELS, DrumPattern, DrumSound } from '@/lib/types';
 
 export function StepSequencer() {

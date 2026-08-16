@@ -1,4 +1,4 @@
-import { useDAW, getActivePatternId } from '@/stores/daw-store';
+import { useDAW, getActivePatternId } from '@/stores/daw-store-context';
 import { generateId, createEmptyDrumGrid, DRUM_LABELS, DRUM_SOUNDS } from '@/lib/types';
 import { Drum, Music, FileAudio, Plus, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';

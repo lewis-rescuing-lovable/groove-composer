@@ -1,5 +1,5 @@
 import { Play, Pause, Square, Repeat, Volume2, Save, FolderOpen, RotateCcw } from 'lucide-react';
-import { useDAW } from '@/stores/daw-store';
+import { useDAW } from '@/stores/daw-store-context';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
