@@ -84,6 +84,11 @@ class MockFilterNode extends MockAudioNode {
   frequency = new MockAudioParam();
   Q = new MockAudioParam();
 }
+class MockAnalyserNode extends MockAudioNode {
+  fftSize = 256;
+  frequencyBinCount = 128;
+  getByteFrequencyData() {}
+}
 class MockBufferSourceNode extends MockAudioNode {
   buffer: unknown = null;
   start() {}
@@ -95,7 +100,7 @@ class MockAudioContext {
   sampleRate = 44100;
   destination = new MockAudioNode();
   createGain() { return new MockGainNode(); }
-  createAnalyser() { return new MockAudioNode(); }
+  createAnalyser() { return new MockAnalyserNode(); }
   createStereoPanner() { return new MockPannerNode(); }
   createBiquadFilter() { return new MockFilterNode(); }
   createOscillator() { return new MockOscillatorNode(); }

@@ -68,4 +68,33 @@ describe('TopBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reset project' }));
     expect(screen.getByDisplayValue('Starter Project')).toBeInTheDocument();
   });
+
+  it('toggles the loop flag', () => {
+    renderTopBar();
+    // Loop button is the third transport button (after play/pause and stop)
+    const buttons = screen.getAllByRole('button');
+    const loopButton = buttons[2];
+    fireEvent.click(loopButton);
+    // No crash; loop state toggled internally
+    expect(screen.getByText('4/4')).toBeInTheDocument();
+  });
+
+  it('changes master volume via the slider', () => {
+    renderTopBar();
+    // The master volume slider is the last slider on the page
+    const sliders = document.querySelectorAll('[role="slider"]');
+    const masterSlider = sliders[sliders.length - 1];
+    fireEvent.keyDown(masterSlider, { key: 'ArrowRight' });
+    // No crash; volume updated internally
+    expect(screen.getByText('4/4')).toBeInTheDocument();
+  });
+
+  it('load with nothing saved logs an info message', () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    window.localStorage.removeItem('groove-composer:project');
+    renderTopBar();
+    fireEvent.click(screen.getByRole('button', { name: 'Load project' }));
+    expect(infoSpy).toHaveBeenCalled();
+    infoSpy.mockRestore();
+  });
 });

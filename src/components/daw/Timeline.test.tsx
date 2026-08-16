@@ -56,4 +56,23 @@ describe('Timeline', () => {
     }
     expect(screen.getByText('Click + to add a track')).toBeInTheDocument();
   });
+
+  it('selects a clip on click', () => {
+    renderTimeline();
+    // The drum clip blocks show a 🥁 emoji; click the first one
+    const clip = screen.getAllByText('🥁')[0];
+    fireEvent.click(clip);
+    // Selecting a clip reveals its duplicate button
+    expect(screen.getByTitle('Duplicate clip')).toBeInTheDocument();
+  });
+
+  it('duplicates a clip', () => {
+    renderTimeline();
+    const before = screen.getAllByText('🥁').length;
+    const clip = screen.getAllByText('🥁')[0];
+    fireEvent.click(clip);
+    fireEvent.click(screen.getByTitle('Duplicate clip'));
+    // Duplicating adds another drum clip
+    expect(screen.getAllByText('🥁').length).toBe(before + 1);
+  });
 });
