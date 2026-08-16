@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import {
-  DAWProject, Track, DrumPattern, Clip, ClipType,
-  generateId, createEmptyDrumGrid, DrumSound,
+  DAWProject, Track, DrumPattern, SynthPattern, Clip, ClipType,
+  generateId, createEmptyDrumGrid, DrumSound, SynthVoice,
 } from '@/lib/types';
 import { AUTOSAVE_MAX_SECONDS } from '@/lib/autosave-time';
 
@@ -113,6 +113,8 @@ export type Action =
   | { type: 'SET_CURRENT_STEP'; step: number }
   | { type: 'SET_LOOP'; enabled: boolean }
   | { type: 'TOGGLE_DRUM_STEP'; patternId: string; sound: DrumSound; step: number }
+  | { type: 'TOGGLE_SYNTH_NOTE'; patternId: string; pitch: number; step: number }
+  | { type: 'SET_SYNTH_PATTERN_STEPS'; patternId: string; steps: number }
   | { type: 'ADD_PATTERN'; pattern: DrumPattern }
   | { type: 'REMOVE_PATTERN'; patternId: string }
   | { type: 'RENAME_PATTERN'; patternId: string; name: string }
@@ -120,6 +122,7 @@ export type Action =
   | { type: 'SET_PATTERN_STEPS'; patternId: string; steps: number }
   | { type: 'ADD_TRACK_WITH_PATTERN' }
   | { type: 'ADD_SAMPLE_TRACK'; sampleId: string; name: string; loop: boolean }
+  | { type: 'ADD_SYNTH_TRACK' }
   | { type: 'REMOVE_TRACK'; trackId: string }
   | { type: 'SET_TRACK_VOLUME'; trackId: string; volume: number }
   | { type: 'SET_TRACK_PAN'; trackId: string; pan: number }
@@ -164,6 +167,36 @@ export function reducer(state: DAWState, action: Action): DAWState {
           newGrid[action.sound][action.step] = !newGrid[action.sound][action.step];
           return { ...p, grid: newGrid };
         }),
+      };
+    }
+    case 'TOGGLE_SYNTH_NOTE': {
+      return {
+        ...state,
+        synthPatterns: state.synthPatterns.map(p => {
+          if (p.id !== action.patternId) return p;
+          const existing = p.notes.find(n => n.pitch === action.pitch && n.startStep === action.step);
+          if (existing) {
+            // Remove the note at this pitch+step.
+            return {
+              ...p,
+              notes: p.notes.filter(n => !(n.pitch === action.pitch && n.startStep === action.step)),
+            };
+          }
+          // Add a note at this pitch+step (one bar = 16 steps, quarter-note length).
+          return {
+            ...p,
+            notes: [...p.notes, { pitch: action.pitch, startStep: action.step, duration: 4, velocity: 0.8 }],
+          };
+        }),
+      };
+    }
+    case 'SET_SYNTH_PATTERN_STEPS': {
+      const steps = Math.max(1, action.steps);
+      return {
+        ...state,
+        synthPatterns: state.synthPatterns.map(p =>
+          p.id === action.patternId ? { ...p, steps } : p
+        ),
       };
     }
     case 'ADD_PATTERN':
@@ -260,6 +293,40 @@ export function reducer(state: DAWState, action: Action): DAWState {
       };
       return {
         ...state,
+        tracks: [...state.tracks, newTrack],
+        selectedTrackId: trackId,
+        selectedClipId: clipId,
+      };
+    }
+    case 'ADD_SYNTH_TRACK': {
+      const trackNum = state.tracks.length + 1;
+      const patternId = generateId();
+      const trackId = generateId();
+      const clipId = generateId();
+      const newPattern: SynthPattern = {
+        id: patternId,
+        name: `Synth ${state.synthPatterns.length + 1}`,
+        notes: [],
+        steps: 16,
+      };
+      const newTrack: Track = {
+        id: trackId,
+        name: `Track ${trackNum}`,
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: clipId,
+          type: 'synth',
+          startBeat: 0,
+          durationBeats: 4,
+          patternId,
+        }],
+      };
+      return {
+        ...state,
+        synthPatterns: [...state.synthPatterns, newPattern],
         tracks: [...state.tracks, newTrack],
         selectedTrackId: trackId,
         selectedClipId: clipId,
@@ -416,7 +483,9 @@ export interface DAWContextType {
   pause: () => void;
   previewSound: (sound: DrumSound) => void;
   previewSample: (sampleId: string) => Promise<void>;
+  previewNote: (midi: number, voice: SynthVoice) => void;
   addSampleTrack: (sampleId: string, name: string, loop: boolean) => void;
+  addSynthTrack: () => void;
   getActivePattern: () => DrumPattern | null;
   saveProject: () => void;
   loadProject: () => boolean;

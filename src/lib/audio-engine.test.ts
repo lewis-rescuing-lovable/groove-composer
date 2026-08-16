@@ -6,6 +6,7 @@ import { DRUM_SOUNDS } from './types';
 class MockAudioParam {
   value = 0;
   setValueAtTime(v: number) { this.value = v; return this; }
+  linearRampToValueAtTime(v: number) { this.value = v; return this; }
   exponentialRampToValueAtTime(v: number) { this.value = v; return this; }
 }
 
@@ -284,6 +285,47 @@ describe('AudioEngine', () => {
     it('playDrumSound returns early without a context', () => {
       // No context created yet
       audioEngine.playDrumSound('kick', 0);
+    });
+  });
+
+  describe('synth note previews', () => {
+    const voice = {
+      waveform: 'sawtooth' as const,
+      filterCutoff: 1200,
+      filterResonance: 1,
+      attack: 0.01,
+      decay: 0.2,
+      sustain: 0.6,
+      release: 0.3,
+    };
+
+    it('previewNote initializes a context and plays a note', () => {
+      audioEngine.previewNote(60, voice);
+      expect(audioEngine.context).not.toBeNull();
+    });
+
+    it('playSynthNote returns early without a context', () => {
+      // No context created yet
+      audioEngine.playSynthNote(60, 0, voice);
+    });
+
+    it('plays a note through an initialized context without throwing', () => {
+      audioEngine.init();
+      audioEngine.playSynthNote(69, 0, voice);
+      expect(audioEngine.context).not.toBeNull();
+    });
+  });
+
+  describe('piano note synthesis', () => {
+    it('playPianoNote returns early without a context', () => {
+      // No context created yet
+      audioEngine.playPianoNote(60, 0);
+    });
+
+    it('plays a piano note through an initialized context without throwing', () => {
+      audioEngine.init();
+      audioEngine.playPianoNote(69, 0);
+      expect(audioEngine.context).not.toBeNull();
     });
   });
 
@@ -624,6 +666,105 @@ describe('AudioEngine', () => {
       audioEngine.stop();
       expect(stopSpy).toHaveBeenCalled();
       MockAudioContext.prototype.createBufferSource = origCreate;
+    });
+  });
+
+  describe('synth clip scheduling', () => {
+    function driveScheduler(times = 5) {
+      vi.spyOn(window, 'setInterval').mockImplementation(((cb: () => void) => {
+        for (let i = 0; i < times; i++) {
+          if (lastMockCtx) lastMockCtx.currentTime += 0.2;
+          cb();
+        }
+        return 123 as never;
+      }) as never);
+    }
+
+    const synthTrack = {
+      id: 'sy1',
+      name: 'Canon',
+      volume: 0.8,
+      pan: 0,
+      muted: false,
+      solo: false,
+      clips: [{
+        id: 'syc1',
+        type: 'synth' as const,
+        startBeat: 0,
+        durationBeats: 4,
+        patternId: 'canon',
+      }],
+    };
+
+    const canonPattern = {
+      id: 'canon',
+      name: 'Canon in D',
+      notes: [
+        { pitch: 62, startStep: 0, duration: 4, velocity: 0.8 },
+        { pitch: 69, startStep: 8, duration: 4, velocity: 0.6 },
+      ],
+    };
+
+    it('schedules synth notes at their start steps without throwing', () => {
+      audioEngine.init();
+      audioEngine.setTracks([synthTrack], [], [canonPattern]);
+      driveScheduler();
+      audioEngine.play();
+      expect(audioEngine.context).not.toBeNull();
+      audioEngine.stop();
+    });
+
+    it('ignores a synth clip with no patternId', () => {
+      audioEngine.init();
+      const noPatternTrack = {
+        ...synthTrack,
+        clips: [{ id: 'syx', type: 'synth' as const, startBeat: 0, durationBeats: 4 }],
+      };
+      audioEngine.setTracks([noPatternTrack], [], [canonPattern]);
+      driveScheduler();
+      audioEngine.play();
+      expect(audioEngine.context).not.toBeNull();
+      audioEngine.stop();
+    });
+
+    it('ignores a synth clip whose pattern is not in the map', () => {
+      audioEngine.init();
+      audioEngine.setTracks([synthTrack], [], []);
+      driveScheduler();
+      audioEngine.play();
+      expect(audioEngine.context).not.toBeNull();
+      audioEngine.stop();
+    });
+
+    it('uses the pattern voice when provided', () => {
+      audioEngine.init();
+      const pianoPattern = {
+        ...canonPattern,
+        voice: {
+          waveform: 'triangle' as const,
+          filterCutoff: 4000,
+          filterResonance: 0.5,
+          attack: 0.005,
+          decay: 0.4,
+          sustain: 0.25,
+          release: 0.8,
+        },
+      };
+      audioEngine.setTracks([synthTrack], [], [pianoPattern]);
+      driveScheduler();
+      audioEngine.play();
+      expect(audioEngine.context).not.toBeNull();
+      audioEngine.stop();
+    });
+
+    it('uses the multi-oscillator piano synthesis when piano is set', () => {
+      audioEngine.init();
+      const pianoPattern = { ...canonPattern, piano: true };
+      audioEngine.setTracks([synthTrack], [], [pianoPattern]);
+      driveScheduler();
+      audioEngine.play();
+      expect(audioEngine.context).not.toBeNull();
+      audioEngine.stop();
     });
   });
 

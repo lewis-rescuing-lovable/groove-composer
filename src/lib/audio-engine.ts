@@ -1,9 +1,10 @@
-import { DrumSound, DrumPattern, DRUM_SOUNDS, Track, Clip } from './types';
+import { DrumSound, DrumPattern, DRUM_SOUNDS, Track, Clip, SynthVoice, SynthPattern, DEFAULT_SYNTH_VOICE, midiToFrequency } from './types';
 import { SampleLoader } from './sample-loader';
 
 interface TrackPlaybackInfo {
   track: Track;
   patterns: Map<string, DrumPattern>; // patternId -> pattern
+  synthPatterns: Map<string, SynthPattern>; // patternId -> synth pattern
 }
 
 class AudioEngine {
@@ -71,13 +72,17 @@ class AudioEngine {
   setLoopEnabled(v: boolean) { this.loopEnabled = v; }
 
   /** Update all tracks and their patterns for playback */
-  setTracks(tracks: Track[], drumPatterns: DrumPattern[]) {
+  setTracks(tracks: Track[], drumPatterns: DrumPattern[], synthPatterns: SynthPattern[] = []) {
     const patternMap = new Map<string, DrumPattern>();
     for (const p of drumPatterns) patternMap.set(p.id, p);
+
+    const synthPatternMap = new Map<string, SynthPattern>();
+    for (const p of synthPatterns) synthPatternMap.set(p.id, p);
 
     this.trackInfos = tracks.map(track => ({
       track,
       patterns: patternMap,
+      synthPatterns: synthPatternMap,
     }));
 
     // Calculate total timeline length in steps (sixteenth notes)
@@ -153,6 +158,86 @@ class AudioEngine {
       case 'tom': this.playTom(time, dest); break;
       case 'cymbal': this.playCymbal(time, dest); break;
       case 'rimshot': this.playRimshot(time, dest); break;
+    }
+  }
+
+  /**
+   * Play a single synthesizer note through the given voice. The note is shaped
+   * by a low-pass filter and an ADSR amplitude envelope. Returns the scheduled
+   * stop time so callers can track active notes.
+   */
+  playSynthNote(midi: number, time: number, voice: SynthVoice, destination?: AudioNode) {
+    if (!this.ctx) return;
+    const dest = destination || this.masterGain!;
+    const ctx = this.ctx;
+    const freq = midiToFrequency(midi);
+
+    const osc = ctx.createOscillator();
+    osc.type = voice.waveform;
+    osc.frequency.setValueAtTime(freq, time);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(voice.filterCutoff, time);
+    filter.Q.setValueAtTime(voice.filterResonance, time);
+
+    const gain = ctx.createGain();
+    const peak = 0.5;
+    const total = voice.attack + voice.decay + voice.release;
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(peak, time + voice.attack);
+    gain.gain.linearRampToValueAtTime(peak * voice.sustain, time + voice.attack + voice.decay);
+    gain.gain.linearRampToValueAtTime(0, time + total);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(dest);
+    osc.start(time);
+    osc.stop(time + total + 0.05);
+  }
+
+  /** Preview a synth note immediately (used by the Synth panel). */
+  previewNote(midi: number, voice: SynthVoice) {
+    this.init();
+    if (this.ctx?.state === 'suspended') this.ctx.resume();
+    this.playSynthNote(midi, this.ctx!.currentTime, voice);
+  }
+
+  /**
+   * Play a piano-like note using multiple oscillators (a fundamental plus a few
+   * harmonics) with a fast attack and a natural exponential decay. This sounds
+   * far richer than a single oscillator, approximating a struck piano string.
+   */
+  playPianoNote(midi: number, time: number, destination?: AudioNode) {
+    if (!this.ctx) return;
+    const dest = destination || this.masterGain!;
+    const ctx = this.ctx;
+    const freq = midiToFrequency(midi);
+
+    // Fundamental + harmonics (2nd, 3rd, 4th) with decreasing amplitudes.
+    const partials = [
+      { ratio: 1, amp: 1.0, decay: 1.0 },
+      { ratio: 2, amp: 0.4, decay: 0.6 },
+      { ratio: 3, amp: 0.2, decay: 0.4 },
+      { ratio: 4, amp: 0.1, decay: 0.3 },
+    ];
+
+    for (const p of partials) {
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq * p.ratio, time);
+
+      const gain = ctx.createGain();
+      const peak = 0.5 * p.amp;
+      // Fast attack, then an exponential decay to near-silence (piano-like).
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(peak, time + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + 1.5 * p.decay);
+
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(time);
+      osc.stop(time + 1.6 * p.decay);
     }
   }
 
@@ -303,12 +388,16 @@ class AudioEngine {
   /** Schedule all tracks at the given global step */
   private scheduleStep(globalStep: number, time: number) {
     for (const info of this.trackInfos) {
-      const { track, patterns } = info;
+      const { track, patterns, synthPatterns } = info;
       const dest = this.trackGains.get(track.id) || this.masterGain!;
 
       for (const clip of track.clips) {
         if (clip.type === 'sample') {
           this.scheduleSampleClip(clip, globalStep, time, dest);
+          continue;
+        }
+        if (clip.type === 'synth') {
+          this.scheduleSynthClip(clip, synthPatterns, globalStep, time, dest);
           continue;
         }
         if (clip.type !== 'drum') continue;
@@ -338,6 +427,47 @@ class AudioEngine {
     setTimeout(() => {
       this.onStepCallback?.(globalStep);
     }, Math.max(0, delay));
+  }
+
+  /**
+   * Schedule a synth clip: play each note in the pattern whose startStep falls
+   * on the current global step. Notes are shaped by the default synth voice.
+   */
+  private scheduleSynthClip(
+    clip: Clip,
+    synthPatterns: Map<string, SynthPattern>,
+    globalStep: number,
+    time: number,
+    dest: AudioNode,
+  ) {
+    if (!clip.patternId) return;
+    const pattern = synthPatterns.get(clip.patternId);
+    if (!pattern) return;
+
+    const clipStartStep = clip.startBeat * 4;
+    const clipEndStep = (clip.startBeat + clip.durationBeats) * 4;
+    if (globalStep < clipStartStep || globalStep >= clipEndStep) return;
+
+    // The pattern length: use the explicit `steps` if set, otherwise derive it
+    // from the notes (the furthest note end).
+    const patternSteps = pattern.steps ?? pattern.notes.reduce(
+      (max, n) => Math.max(max, n.startStep + n.duration),
+      1,
+    );
+    const localStep = (globalStep - clipStartStep) % patternSteps;
+
+    // Use the pattern's voice if set, otherwise the default synth voice.
+    const voice = pattern.voice ?? DEFAULT_SYNTH_VOICE;
+
+    for (const note of pattern.notes) {
+      if (note.startStep === localStep) {
+        if (pattern.piano) {
+          this.playPianoNote(note.pitch, time, dest);
+        } else {
+          this.playSynthNote(note.pitch, time, voice, dest);
+        }
+      }
+    }
   }
 
   /** and stop at the clip end.

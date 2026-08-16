@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { selectors, trackConsoleErrors, checkSampleLibrary } from "./helpers";
+import { selectors, trackConsoleErrors, checkSampleLibrary, checkSynthesizer } from "./helpers";
 
 /**
  * End-to-end functional tests for the groove-composer DAW.
@@ -56,15 +56,19 @@ test.describe("groove-composer DAW", () => {
   });
 
   test("switches between drums and samples panels", async ({ page }) => {
-    // The app's sidebar is composable: only Drums + Samples tabs are provided.
-    // The Synth tab is omitted until the synth is implemented.
+    // The app's sidebar is composable: Drums + Synth + Samples tabs are provided.
     await expect(page.locator(selectors.samplesTab).first()).toBeVisible();
-    await expect(page.locator("button:has-text('Synth')")).toHaveCount(0);
+    await expect(page.locator("button:has-text('Synth')").first()).toBeVisible();
     await page.locator(selectors.samplesTab).first().click();
     await checkSampleLibrary(page);
     // Back to drums
     await page.locator(selectors.drumsTab).first().click();
     await expect(page.getByText("Patterns")).toBeVisible();
+  });
+
+  test("shows the synth panel", async ({ page }) => {
+    await page.locator("button:has-text('Synth')").first().click();
+    await checkSynthesizer(page);
   });
 
   test("edit BPM within bounds", async ({ page }) => {

@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Placeholder for the upcoming synthesizer. Not wired into the app yet — this story shows how a future SynthPanel would slot into the composable InstrumentSidebar. When the synth is implemented, replace this body with the real controls.',
+          'The synthesizer panel: a monophonic voice (waveform, low-pass filter, ADSR envelope) with a one-octave keyboard for previewing notes. The voice is local state, so it renders standalone without persisting to the DAW store.',
       },
     },
   },
@@ -18,4 +18,5 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Placeholder: Story = {};
+export const Default: Story = {};
+

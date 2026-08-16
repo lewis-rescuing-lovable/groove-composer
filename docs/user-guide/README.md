@@ -18,9 +18,9 @@ The app is split into four main areas:
 | Area | What it does |
 | ---- | ------------ |
 | **Top bar** | Project name, BPM, time signature, transport (play/stop/loop), autosave controls, save/load/reset, master volume |
-| **Instrument sidebar** | Two panels — **Drums** and **Samples** — for patterns, kit sounds, and sample tracks (the sidebar is composable; the **Synth** tab is omitted until it's implemented) |
+| **Instrument sidebar** | Three panels — **Drums**, **Synth**, and **Samples** — for patterns, kit sounds, the synthesizer, and sample tracks |
 | **Timeline** | Your arrangement: tracks, clips, mute/solo, volume, and the beat ruler |
-| **Editor + Spectrum** | The step sequencer for the selected pattern, plus a live spectrum analyzer |
+| **Editor + Spectrum** | The step sequencer (drums) or piano-roll synth editor (synth tracks), plus a live spectrum analyzer |
 
 ---
 
@@ -67,7 +67,7 @@ to each other in the top bar.
 
 ## 2. Instrument sidebar
 
-The sidebar has two tabs. The **Drums** tab is active by default.
+The sidebar has three tabs. The **Drums** tab is active by default.
 
 ### Drums
 
@@ -79,10 +79,12 @@ The sidebar has two tabs. The **Drums** tab is active by default.
 
 ### Synth
 
-The synthesizer isn't part of the app yet. The sidebar is **composable** — it
-only shows the panels it's given — so the Synth tab is omitted entirely until
-the synth is implemented (no placeholder). A placeholder panel exists in the
-component library (Storybook) so you can see how it will slot in.
+![Synth panel](sidebar-synth.png)
+
+- **Waveform** — choose the oscillator shape (sine, square, sawtooth, triangle).
+- **Filter** — adjust the low-pass cutoff and resonance.
+- **Envelope** — shape the ADSR (attack, decay, sustain, release).
+- **Keyboard** — tap a key to preview a note with the current voice.
 
 ### Samples
 
