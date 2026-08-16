@@ -44,6 +44,8 @@ export interface Clip {
   durationBeats: number;
   patternId?: string;
   sampleId?: string;
+  /** For sample clips: true = loop for the clip duration, false = one-shot. */
+  loop?: boolean;
 }
 
 export interface Track {

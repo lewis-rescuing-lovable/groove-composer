@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { selectors, trackConsoleErrors } from "./helpers";
+import { selectors, trackConsoleErrors, checkSynthesizer, checkSampleLibrary } from "./helpers";
 
 /**
  * End-to-end functional tests for the groove-composer DAW.
@@ -57,9 +57,9 @@ test.describe("groove-composer DAW", () => {
 
   test("switches between synth and samples panels", async ({ page }) => {
     await page.locator(selectors.synthTab).first().click();
-    await expect(page.getByText("Synthesizer coming soon")).toBeVisible();
+    await checkSynthesizer(page);
     await page.locator(selectors.samplesTab).first().click();
-    await expect(page.getByText("Sample library coming soon")).toBeVisible();
+    await checkSampleLibrary(page);
     // Back to drums
     await page.locator(selectors.drumsTab).first().click();
     await expect(page.getByText("Patterns")).toBeVisible();

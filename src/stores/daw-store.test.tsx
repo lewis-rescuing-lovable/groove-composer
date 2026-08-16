@@ -189,6 +189,19 @@ describe('daw-store reducer', () => {
     expect(result.current.state.tracks[0].clips).toHaveLength(3);
   });
 
+  it('adds a sample track with ADD_SAMPLE_TRACK', () => {
+    const { result } = renderDAW();
+    act(() => result.current.dispatch({ type: 'ADD_SAMPLE_TRACK', sampleId: 'kalimba', name: 'Kalimba', loop: true }));
+    const track = result.current.state.tracks[result.current.state.tracks.length - 1];
+    expect(track.name).toBe('Kalimba');
+    expect(track.clips).toHaveLength(1);
+    expect(track.clips[0].type).toBe('sample');
+    expect(track.clips[0].sampleId).toBe('kalimba');
+    expect(track.clips[0].loop).toBe(true);
+    // New track is selected
+    expect(result.current.state.selectedTrackId).toBe(track.id);
+  });
+
   it('selects a clip with SELECT_CLIP', () => {
     const { result } = renderDAW();
     act(() => result.current.dispatch({ type: 'SELECT_CLIP', trackId: 'track-1', clipId: 'clip-1' }));

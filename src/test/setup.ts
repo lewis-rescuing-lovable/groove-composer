@@ -48,8 +48,17 @@ const createCanvasContext2D = () => {
   const context = {
     canvas: {},
     fillStyle: "",
+    strokeStyle: "",
+    lineWidth: 1,
+    font: "",
     clearRect: () => {},
     fillRect: () => {},
+    scale: () => {},
+    beginPath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    stroke: () => {},
+    fillText: () => {},
     getContext: () => null,
   };
   return context as unknown as CanvasRenderingContext2D;

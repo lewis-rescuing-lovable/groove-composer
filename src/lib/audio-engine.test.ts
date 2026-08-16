@@ -43,6 +43,8 @@ class MockOscillatorNode {
 
 class MockBufferSourceNode {
   buffer: unknown = null;
+  loop = false;
+  onended: (() => void) | null = null;
   connect() { return this; }
   start() {}
   stop() {}
@@ -249,6 +251,339 @@ describe('AudioEngine', () => {
     it('returns null for unknown track', () => {
       audioEngine.init();
       expect(audioEngine.getTrackAnalyser('nope')).toBeNull();
+    });
+  });
+
+  describe('playSample', () => {
+    it('throws when no sample loader is attached', async () => {
+      audioEngine.init();
+      await expect(audioEngine.playSample('kalimba')).rejects.toThrow('No sample loader');
+    });
+
+    it('plays a loaded sample buffer', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn().mockResolvedValue({
+          status: 'ready',
+          buffer: { length: 100 },
+          error: null,
+        }),
+      };
+      audioEngine.setSampleLoader(loader as never);
+      await expect(audioEngine.playSample('kalimba')).resolves.toBeUndefined();
+      expect(loader.load).toHaveBeenCalledWith('kalimba');
+    });
+
+    it('rejects when the sample failed to load', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn().mockResolvedValue({
+          status: 'error',
+          buffer: null,
+          error: 'boom',
+        }),
+      };
+      audioEngine.setSampleLoader(loader as never);
+      await expect(audioEngine.playSample('kalimba')).rejects.toThrow('boom');
+    });
+  });
+
+  describe('sample clip scheduling', () => {
+    // Drive the scheduler by making setInterval actually invoke its callback
+    // several times, advancing the mock context's clock so currentStep advances.
+    function driveScheduler(times = 5) {
+      vi.spyOn(window, 'setInterval').mockImplementation(((cb: () => void) => {
+        for (let i = 0; i < times; i++) {
+          if (lastMockCtx) lastMockCtx.currentTime += 0.2;
+          cb();
+        }
+        return 123 as never;
+      }) as never);
+    }
+
+    it('schedules a one-shot sample clip at its start step', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn().mockResolvedValue({
+          status: 'ready',
+          buffer: { length: 100 },
+          error: null,
+        }),
+      };
+      audioEngine.setSampleLoader(loader as never);
+
+      const sampleTrack = {
+        id: 'st1',
+        name: 'Kalimba',
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: 'sc1',
+          type: 'sample' as const,
+          startBeat: 0,
+          durationBeats: 4,
+          sampleId: 'kalimba',
+          loop: false,
+        }],
+      };
+      audioEngine.setTracks([sampleTrack], []);
+      driveScheduler();
+      audioEngine.play();
+      await Promise.resolve();
+      expect(loader.load).toHaveBeenCalledWith('kalimba');
+      audioEngine.stop();
+    });
+
+    it('schedules a looping sample clip', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn().mockResolvedValue({
+          status: 'ready',
+          buffer: { length: 100 },
+          error: null,
+        }),
+      };
+      audioEngine.setSampleLoader(loader as never);
+
+      const sampleTrack = {
+        id: 'st2',
+        name: 'Bell',
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: 'sc2',
+          type: 'sample' as const,
+          startBeat: 0,
+          durationBeats: 4,
+          sampleId: 'bell',
+          loop: true,
+        }],
+      };
+      audioEngine.setTracks([sampleTrack], []);
+      driveScheduler();
+      audioEngine.play();
+      await Promise.resolve();
+      expect(loader.load).toHaveBeenCalledWith('bell');
+      audioEngine.stop();
+    });
+
+    it('ignores a sample clip with no sampleId', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn(),
+      };
+      audioEngine.setSampleLoader(loader as never);
+
+      const sampleTrack = {
+        id: 'st3',
+        name: 'Empty',
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: 'sc3',
+          type: 'sample' as const,
+          startBeat: 0,
+          durationBeats: 4,
+          loop: false,
+        }],
+      };
+      audioEngine.setTracks([sampleTrack], []);
+      driveScheduler();
+      audioEngine.play();
+      await Promise.resolve();
+      expect(loader.load).not.toHaveBeenCalled();
+      audioEngine.stop();
+    });
+
+    it('does not schedule a sample clip before its start step', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn(),
+      };
+      audioEngine.setSampleLoader(loader as never);
+
+      const sampleTrack = {
+        id: 'st4',
+        name: 'Later',
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: 'sc4',
+          type: 'sample' as const,
+          startBeat: 8,
+          durationBeats: 4,
+          sampleId: 'kalimba',
+          loop: false,
+        }],
+      };
+      audioEngine.setTracks([sampleTrack], []);
+      driveScheduler();
+      audioEngine.play();
+      await Promise.resolve();
+      // At step 0 the clip (startBeat 8) is out of range, so no load.
+      expect(loader.load).not.toHaveBeenCalled();
+      audioEngine.stop();
+    });
+
+    it('does not throw when a scheduled sample fails to load', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn().mockResolvedValue({
+          status: 'error',
+          buffer: null,
+          error: 'boom',
+        }),
+      };
+      audioEngine.setSampleLoader(loader as never);
+
+      const sampleTrack = {
+        id: 'st5',
+        name: 'Broken',
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: 'sc5',
+          type: 'sample' as const,
+          startBeat: 0,
+          durationBeats: 4,
+          sampleId: 'kalimba',
+          loop: false,
+        }],
+      };
+      audioEngine.setTracks([sampleTrack], []);
+      driveScheduler();
+      audioEngine.play();
+      await Promise.resolve();
+      expect(loader.load).toHaveBeenCalledWith('kalimba');
+      audioEngine.stop();
+    });
+
+    it('no-ops when scheduling a sample clip without a loader attached', async () => {
+      audioEngine.init();
+      const sampleTrack = {
+        id: 'st6',
+        name: 'NoLoader',
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: 'sc6',
+          type: 'sample' as const,
+          startBeat: 0,
+          durationBeats: 4,
+          sampleId: 'kalimba',
+          loop: false,
+        }],
+      };
+      audioEngine.setTracks([sampleTrack], []);
+      driveScheduler();
+      audioEngine.play();
+      await Promise.resolve();
+      audioEngine.stop();
+    });
+
+    it('schedules a looped sample to stop at the clip end', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn().mockResolvedValue({
+          status: 'ready',
+          buffer: { length: 100 },
+          error: null,
+        }),
+      };
+      audioEngine.setSampleLoader(loader as never);
+
+      const sampleTrack = {
+        id: 'st7',
+        name: 'Loop',
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: 'sc7',
+          type: 'sample' as const,
+          startBeat: 0,
+          durationBeats: 4,
+          sampleId: 'kalimba',
+          loop: true,
+        }],
+      };
+      audioEngine.setTracks([sampleTrack], []);
+      driveScheduler();
+      audioEngine.play();
+      await Promise.resolve();
+      // The looped source should have been told to stop at the clip end.
+      expect(loader.load).toHaveBeenCalledWith('kalimba');
+      audioEngine.stop();
+    });
+
+    it('stop() silences all active sample sources', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn().mockResolvedValue({
+          status: 'ready',
+          buffer: { length: 100 },
+          error: null,
+        }),
+      };
+      audioEngine.setSampleLoader(loader as never);
+
+      // Capture created sources so we can assert stop() calls source.stop().
+      const createdSources: MockBufferSourceNode[] = [];
+      const origCreate = MockAudioContext.prototype.createBufferSource;
+      MockAudioContext.prototype.createBufferSource = function () {
+        const s = origCreate.call(this) as MockBufferSourceNode;
+        createdSources.push(s);
+        return s;
+      };
+
+      const sampleTrack = {
+        id: 'st8',
+        name: 'Loop',
+        volume: 0.8,
+        pan: 0,
+        muted: false,
+        solo: false,
+        clips: [{
+          id: 'sc8',
+          type: 'sample' as const,
+          startBeat: 0,
+          durationBeats: 4,
+          sampleId: 'kalimba',
+          loop: true,
+        }],
+      };
+      audioEngine.setTracks([sampleTrack], []);
+      driveScheduler();
+      audioEngine.play();
+      await Promise.resolve();
+      expect(createdSources.length).toBeGreaterThan(0);
+
+      const stopSpy = vi.spyOn(createdSources[0], 'stop');
+      audioEngine.stop();
+      expect(stopSpy).toHaveBeenCalled();
+      MockAudioContext.prototype.createBufferSource = origCreate;
     });
   });
 

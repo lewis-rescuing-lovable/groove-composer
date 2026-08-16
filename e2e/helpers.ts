@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import { Page, expect } from "@playwright/test";
 
 export interface PerfSample {
   heapMB: number;
@@ -82,3 +82,25 @@ export const selectors = {
   samplesTab: "button:has-text('Samples')",
   drumsTab: "button:has-text('Drums')",
 };
+
+/**
+ * Higher-order panel quality checks. These are the single source of truth for
+ * what a healthy Synth / Samples panel looks like, so we can iterate on the
+ * quality checks in one place and reuse them across e2e tests.
+ */
+
+/** Asserts the Synth panel renders its expected content. */
+export async function checkSynthesizer(page: Page) {
+  await expect(page.getByText("Synthesizer coming soon")).toBeVisible();
+}
+
+/** Asserts the Samples panel renders its expected content. */
+export async function checkSampleLibrary(page: Page) {
+  // The sample library header + a curated sample are present.
+  await expect(page.getByText("Sample Library")).toBeVisible();
+  await expect(page.getByText("Kalimba")).toBeVisible();
+  // Each sample card exposes loop/one-shot controls and an add-track action.
+  await expect(page.getByText("One-shot").first()).toBeVisible();
+  await expect(page.getByText("Loop").first()).toBeVisible();
+  await expect(page.getByText("Add track").first()).toBeVisible();
+}

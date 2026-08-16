@@ -1,9 +1,10 @@
 import { useDAW } from '@/stores/daw-store-context';
 import { Track as TrackType, Clip } from '@/lib/types';
-import { Plus, Trash2, Copy } from 'lucide-react';
+import { Plus, Trash2, Copy, Repeat, Repeat1 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useRef, useState, useCallback } from 'react';
+import { SampleWaveform } from './SampleWaveform';
 
 const BEAT_WIDTH = 60;
 const BEATS_TO_SHOW = 32;
@@ -28,35 +29,40 @@ export function Timeline() {
         </div>
       )}
 
-      {/* Timeline header */}
-      <div className="flex border-b border-border shrink-0">
-        <div className="w-52 shrink-0 px-3 py-1.5 flex items-center justify-between border-r border-border">
-          <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Tracks</span>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={addTrack}>
-            <Plus className="h-3 w-3" />
-          </Button>
-        </div>
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex" style={{ width: BEATS_TO_SHOW * BEAT_WIDTH }}>
-            {Array.from({ length: BEATS_TO_SHOW }, (_, i) => (
-              <div
-                key={i}
-                className={`text-[10px] font-mono py-1.5 border-r
-                  ${i % 4 === 0 ? 'text-muted-foreground border-daw-grid-line-strong' : 'text-muted-foreground/30 border-daw-grid-line'}`}
-                style={{ width: BEAT_WIDTH }}
-              >
-                <span className="pl-1">{Math.floor(i / 4) + 1}.{(i % 4) + 1}</span>
+      {/* Body: single vertical scroll; ruler + all lanes share one horizontal scroll */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="overflow-x-auto">
+          <div style={{ width: BEATS_TO_SHOW * BEAT_WIDTH + 208 }}>
+            {/* Ruler row (sticky top, scrolls horizontally with the grid) */}
+            <div className="sticky top-0 z-10 flex border-b border-border bg-background">
+              <div className="w-52 shrink-0 px-3 py-1.5 flex items-center justify-between border-r border-border">
+                <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Tracks</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={addTrack}>
+                  <Plus className="h-3 w-3" />
+                </Button>
               </div>
+              <div className="flex-1">
+                <div className="flex" style={{ width: BEATS_TO_SHOW * BEAT_WIDTH }}>
+                  {Array.from({ length: BEATS_TO_SHOW }, (_, i) => (
+                    <div
+                      key={i}
+                      className={`text-[10px] font-mono py-1.5 border-r
+                        ${i % 4 === 0 ? 'text-muted-foreground border-daw-grid-line-strong' : 'text-muted-foreground/30 border-daw-grid-line'}`}
+                      style={{ width: BEAT_WIDTH }}
+                    >
+                      <span className="pl-1">{Math.floor(i / 4) + 1}.{(i % 4) + 1}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Track lanes */}
+            {state.tracks.map(track => (
+              <TrackLane key={track.id} track={track} />
             ))}
           </div>
         </div>
-      </div>
-
-      {/* Track lanes */}
-      <div className="flex-1 overflow-y-auto">
-        {state.tracks.map(track => (
-          <TrackLane key={track.id} track={track} />
-        ))}
         {state.tracks.length === 0 && (
           <div className="flex items-center justify-center h-32 text-muted-foreground text-sm font-mono">
             Click + to add a track
@@ -67,7 +73,7 @@ export function Timeline() {
   );
 }
 
-// ─── Track Lane ───────────────────────────────────────────────
+// ─── Track Lane (controls sticky-left + grid row, shares horizontal scroll) ──
 function TrackLane({ track }: { track: TrackType }) {
   const { state, dispatch } = useDAW();
   const isSelected = state.selectedTrackId === track.id;
@@ -98,8 +104,12 @@ function TrackLane({ track }: { track: TrackType }) {
       className={`flex border-b border-border group ${isSelected ? 'ring-1 ring-inset ring-primary/50' : ''}`}
       onClick={() => dispatch({ type: 'SELECT_TRACK', trackId: track.id })}
     >
-      {/* Track controls */}
-      <div className={`w-52 shrink-0 px-2 py-1.5 flex flex-col gap-1 border-r border-border ${isSelected ? 'bg-primary/5' : 'bg-card'}`}>
+      {/* Track controls (sticky so they stay put while the grid scrolls) */}
+      <div
+        className={`w-52 shrink-0 px-2 py-1.5 flex flex-col gap-1 border-r border-border sticky left-0 z-[7] bg-card
+          ${isSelected ? 'bg-primary/5' : 'bg-card'}`}
+        style={{ minHeight: 52 }}
+      >
         <div className="flex items-center gap-1">
           <input
             value={track.name}
@@ -136,10 +146,10 @@ function TrackLane({ track }: { track: TrackType }) {
         </div>
       </div>
 
-      {/* Clip area */}
+      {/* Clip area (scrolls with the shared grid) */}
       <div
         ref={laneRef}
-        className="flex-1 relative overflow-x-auto cursor-default"
+        className="flex-1 relative cursor-default"
         style={{ minHeight: 52 }}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
@@ -257,6 +267,7 @@ function ClipBlock({
 
   const displayStart = dragPreview ?? clip.startBeat;
   const displayDuration = resizePreview ?? clip.durationBeats;
+  const clipWidth = displayDuration * BEAT_WIDTH - 2;
 
   return (
     <div
@@ -266,25 +277,38 @@ function ClipBlock({
       onMouseDown={handleMouseDown}
       className={`absolute top-1 bottom-1 rounded-sm border ${clipColor}
         flex items-center justify-between px-1.5 text-[10px] font-mono text-white/90
-        select-none z-[5]
+        select-none z-[5] overflow-hidden
         ${isDragging ? 'opacity-40' : 'hover:brightness-110'}
         ${isSelectedClip ? 'ring-1 ring-white/40' : ''}
         ${isResizing ? 'ring-1 ring-primary' : ''}
         transition-shadow`}
       style={{
         left: displayStart * BEAT_WIDTH,
-        width: displayDuration * BEAT_WIDTH - 2,
+        width: clipWidth,
         cursor: 'grab',
       }}
     >
-      <span className="truncate">
-        {clip.type === 'drum' ? '🥁' : clip.type === 'synth' ? '🎹' : '🎵'}
-      </span>
+      {clip.type === 'sample' && clip.sampleId ? (
+        <div className="absolute inset-0 flex items-center">
+          <SampleWaveform sampleId={clip.sampleId} width={clipWidth} height={28} />
+        </div>
+      ) : (
+        <span className="truncate">
+          {clip.type === 'drum' ? '🥁' : clip.type === 'synth' ? '🎹' : '🎵'}
+        </span>
+      )}
+
+      {/* Loop / one-shot indicator for sample clips */}
+      {clip.type === 'sample' && (
+        <span className="absolute top-0.5 right-0.5 z-[6] text-white/80" title={clip.loop ? 'Looping' : 'One-shot'}>
+          {clip.loop ? <Repeat className="h-3 w-3" /> : <Repeat1 className="h-3 w-3" />}
+        </span>
+      )}
 
       {/* Duplicate button */}
       {isSelectedClip && (
         <button
-          className="shrink-0 p-0.5 rounded hover:bg-white/20 transition-colors"
+          className="shrink-0 p-0.5 rounded hover:bg-white/20 transition-colors z-[6]"
           onClick={(e) => {
             e.stopPropagation();
             dispatch({ type: 'DUPLICATE_CLIP', trackId, clipId: clip.id });
@@ -297,7 +321,7 @@ function ClipBlock({
 
       {/* Resize handle */}
       <div
-        className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20 rounded-r-sm"
+        className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20 rounded-r-sm z-[6]"
         onMouseDown={(e) => {
           // Prevent drag start on the resize handle
           e.stopPropagation();
