@@ -380,7 +380,9 @@ class AudioEngine {
     this.init();
     if (this.ctx?.state === 'suspended') this.ctx.resume();
     this.isPlaying = true;
-    this.currentStep = 0;
+    // Resume from the current step. `stop()` resets the step to 0, so a fresh
+    // play after stop still starts from the beginning, while play after pause
+    // continues from where the scrubber was left.
     this.nextStepTime = this.ctx!.currentTime + 0.05;
     this.schedulerTimer = window.setInterval(() => this.scheduler(), this.scheduleInterval);
   }
