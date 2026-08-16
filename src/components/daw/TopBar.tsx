@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useDAW } from '@/stores/daw-store-context';
 import { toast } from '@/components/ui/sonner';
 import { getShareUrl } from '@/lib/share';
-import { serializeProject } from '@/stores/daw-store-context';
+import { serializeProject, loadFromStorage } from '@/stores/daw-store-context';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,11 +23,21 @@ import { formatAutosaveInterval, parseAutosaveInterval } from '@/lib/autosave-ti
 
 export function TopBar() {
   const { state, dispatch, play, stop, pause, saveProject, loadProject, resetProject } = useDAW();
+  const [loadDialogOpen, setLoadDialogOpen] = useState(false);
 
   const handleLoad = () => {
     if (!loadProject()) {
       // Nothing saved — surface a gentle hint in the console and keep state as-is.
       console.info('[groove-composer] No saved project found to load.');
+    }
+  };
+
+  const handleLoadClick = () => {
+    // Only ask for confirmation when there's actually a saved project to load.
+    if (loadFromStorage()) {
+      setLoadDialogOpen(true);
+    } else {
+      handleLoad();
     }
   };
 
@@ -117,14 +127,31 @@ export function TopBar() {
         >
           <Save className="h-4 w-4" />
         </Button>
-        <Button
-          variant="ghost" size="icon" onClick={handleLoad}
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-          title="Load saved project"
-          aria-label="Load project"
-        >
-          <FolderOpen className="h-4 w-4" />
-        </Button>
+        <AlertDialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost" size="icon" onClick={handleLoadClick}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="Load saved project"
+              aria-label="Load project"
+            >
+              <FolderOpen className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Load saved project?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This replaces the current project with the one saved in browser
+                storage. Any unsaved changes will be lost.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleLoad}>Load</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <Button
           variant="ghost" size="icon" onClick={handleShare}
           className="h-8 w-8 text-muted-foreground hover:text-foreground"

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, renderHook, act } from '@testing-library/react';
 import { DAWProvider } from '@/stores/daw-store';
+import { useDAW } from '@/stores/daw-store-context';
 import { TopBar } from './TopBar';
 
 function renderTopBar() {
@@ -121,6 +122,34 @@ describe('TopBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Load project' }));
     expect(infoSpy).toHaveBeenCalled();
     infoSpy.mockRestore();
+  });
+
+  it('load asks for confirmation when a saved project exists', () => {
+    // Save a project to storage.
+    const { result } = renderHook(() => useDAW(), { wrapper: DAWProvider });
+    act(() => result.current.dispatch({ type: 'SET_PROJECT_NAME', name: 'Saved Groove' }));
+    act(() => result.current.saveProject());
+
+    renderTopBar();
+    fireEvent.click(screen.getByRole('button', { name: 'Load project' }));
+    // Confirmation dialog appears; confirm the load.
+    fireEvent.click(screen.getByRole('button', { name: 'Load' }));
+    expect(screen.getByDisplayValue('Saved Groove')).toBeInTheDocument();
+  });
+
+  it('load does not change state when the dialog is cancelled', () => {
+    renderTopBar();
+    const name = screen.getByDisplayValue('Starter Project');
+    fireEvent.change(name, { target: { value: 'My Groove' } });
+
+    // Save a different project to storage via a separate provider.
+    const { result } = renderHook(() => useDAW(), { wrapper: DAWProvider });
+    act(() => result.current.dispatch({ type: 'SET_PROJECT_NAME', name: 'Saved Groove' }));
+    act(() => result.current.saveProject());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load project' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByDisplayValue('My Groove')).toBeInTheDocument();
   });
 
   it('renders the autosave checkbox and interval input', () => {

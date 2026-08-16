@@ -86,6 +86,9 @@ export function DAWProvider({
   const loadProject = useCallback((): boolean => {
     const saved = loadFromStorage();
     if (!saved) return false;
+    // Never load into a playing state — stop the audio engine so playback
+    // doesn't continue over the newly loaded project.
+    audioEngine.stop();
     dispatch({ type: 'LOAD_PROJECT', project: saved });
     return true;
   }, []);

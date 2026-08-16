@@ -510,6 +510,20 @@ describe('persistence', () => {
     act(() => { ok = result.current.loadProject(); });
     expect(ok).toBe(false);
   });
+
+  it('loadProject never loads into a playing state', () => {
+    const { result } = renderDAW();
+    act(() => result.current.dispatch({ type: 'SET_PROJECT_NAME', name: 'Saved Groove' }));
+    act(() => result.current.saveProject());
+
+    // Simulate playback in progress, then load.
+    act(() => result.current.dispatch({ type: 'SET_PLAYING', playing: true }));
+    expect(result.current.state.isPlaying).toBe(true);
+
+    act(() => result.current.loadProject());
+    expect(result.current.state.projectName).toBe('Saved Groove');
+    expect(result.current.state.isPlaying).toBe(false);
+  });
 });
 
 describe('autosave preferences', () => {
