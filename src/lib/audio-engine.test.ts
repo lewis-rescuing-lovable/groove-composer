@@ -73,7 +73,7 @@ class MockAudioContext {
 let lastMockCtx: MockAudioContext | null = null;
 
 function installAudioMock() {
-  const factory = vi.fn().mockImplementation(() => {
+  const factory = vi.fn().mockImplementation(function () {
     lastMockCtx = new MockAudioContext();
     return lastMockCtx;
   });
