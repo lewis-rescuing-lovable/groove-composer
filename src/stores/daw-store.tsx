@@ -5,13 +5,20 @@ import { sampleLoader } from '@/lib/sample-loader';
 import {
   DAWContext, DAWState, Action, reducer, initialState,
   getActivePatternId, serializeProject, loadFromStorage, STORAGE_KEY,
+  loadPrefsFromStorage, savePrefsToStorage,
 } from './daw-store-context';
 
 export function DAWProvider({ children }: { children: React.ReactNode }) {
   // Hydrate from localStorage on first render (client-side).
   const [state, dispatch] = useReducer(reducer, initialState, (base) => {
     const saved = loadFromStorage();
-    return saved ? { ...base, ...saved, isPlaying: false, currentStep: -1 } : base;
+    const prefs = loadPrefsFromStorage();
+    return {
+      ...base,
+      ...(saved ? { ...saved, isPlaying: false, currentStep: -1 } : {}),
+      autosaveEnabled: prefs.autosaveEnabled,
+      autosaveIntervalSeconds: prefs.autosaveIntervalSeconds,
+    };
   });
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -27,25 +34,23 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
     return stateRef.current.drumPatterns.find(p => p.id === patternId) ?? null;
   }, []);
 
-  // Autosave whenever the project data changes.
+  // Autosave on a periodic timer (bounded by the user's interval). Gated on
+  // autosaveEnabled, so an "off" preference never triggers a save.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const timer = window.setTimeout(() => {
+    if (!state.autosaveEnabled) return;
+    const timer = window.setInterval(() => {
       window.localStorage.setItem(STORAGE_KEY, serializeProject(stateRef.current));
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [
-    state.projectName,
-    state.bpm,
-    state.timeSignature,
-    state.tracks,
-    state.drumPatterns,
-    state.synthPatterns,
-    state.masterVolume,
-    state.loopEnabled,
-    state.loopStart,
-    state.loopEnd,
-  ]);
+    }, state.autosaveIntervalSeconds * 1000);
+    return () => window.clearInterval(timer);
+  }, [state.autosaveEnabled, state.autosaveIntervalSeconds]);
+
+  // Persist autosave preferences to their own key whenever they change.
+  useEffect(() => {
+    savePrefsToStorage({
+      autosaveEnabled: state.autosaveEnabled,
+      autosaveIntervalSeconds: state.autosaveIntervalSeconds,
+    });
+  }, [state.autosaveEnabled, state.autosaveIntervalSeconds]);
 
   const saveProject = useCallback(() => {
     if (typeof window === 'undefined') return;

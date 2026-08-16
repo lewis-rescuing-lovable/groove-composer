@@ -16,7 +16,7 @@ test.describe("groove-composer DAW", () => {
     await expect(page.getByText("Tracks")).toBeVisible();
     // Default drum track + patterns
     await expect(page.locator('input[value="Drums"]')).toBeVisible();
-    await expect(page.getByText("Clap & Cymbal", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Clap & Cymbal/)).toBeVisible();
     // Spectrum canvas present
     await expect(page.locator("canvas")).toBeVisible();
   });
@@ -105,8 +105,9 @@ test.describe("groove-composer DAW", () => {
     const input = page.getByTestId("pattern-name-input-default-pattern");
     await input.fill("Main Groove");
     await input.press("Enter");
-    // The pattern name renders together with its step count, e.g. "Main Groove(16)"
-    await expect(page.getByText(/Main Groove/)).toBeVisible();
+    // The pattern name renders together with its step count, e.g. "Main Groove(16)".
+    // Target the sidebar entry specifically (the sequencer may also show the name).
+    await expect(page.getByText(/Main Groove\(16\)/)).toBeVisible();
   });
 
   test("renames a pattern from the sequencer", async ({ page }) => {

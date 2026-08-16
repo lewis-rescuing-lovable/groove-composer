@@ -97,4 +97,29 @@ describe('TopBar', () => {
     expect(infoSpy).toHaveBeenCalled();
     infoSpy.mockRestore();
   });
+
+  it('renders the autosave checkbox and interval input', () => {
+    renderTopBar();
+    expect(screen.getByRole('checkbox', { name: 'Autosave' })).toBeChecked();
+    expect(screen.getByRole('textbox', { name: 'Autosave interval' })).toHaveValue('00:05');
+  });
+
+  it('disables the interval input when autosave is off', () => {
+    renderTopBar();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Autosave' }));
+    expect(screen.getByRole('textbox', { name: 'Autosave interval' })).toBeDisabled();
+  });
+
+  it('commits a valid interval on blur and rejects an over-max value', () => {
+    renderTopBar();
+    const interval = screen.getByRole('textbox', { name: 'Autosave interval' });
+    // Valid: 90s -> 01:30
+    fireEvent.change(interval, { target: { value: '90' } });
+    fireEvent.blur(interval);
+    expect(screen.getByRole('textbox', { name: 'Autosave interval' })).toHaveValue('01:30');
+    // Over max: 3601 rejected -> reverts to last valid value
+    fireEvent.change(interval, { target: { value: '3601' } });
+    fireEvent.blur(interval);
+    expect(screen.getByRole('textbox', { name: 'Autosave interval' })).toHaveValue('01:30');
+  });
 });

@@ -1,8 +1,11 @@
 import { Play, Pause, Square, Repeat, Volume2, Save, FolderOpen, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
 import { useDAW } from '@/stores/daw-store-context';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { formatAutosaveInterval, parseAutosaveInterval } from '@/lib/autosave-time';
 
 export function TopBar() {
   const { state, dispatch, play, stop, pause, saveProject, loadProject, resetProject } = useDAW();
@@ -65,6 +68,19 @@ export function TopBar() {
         </Button>
       </div>
 
+      {/* Autosave preference (interval left of the checkbox so it never shifts) */}
+      <div className="flex items-center gap-2 ml-2">
+        <AutosaveIntervalInput />
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+          <Checkbox
+            checked={state.autosaveEnabled}
+            onCheckedChange={(checked) => dispatch({ type: 'SET_AUTOSAVE_ENABLED', enabled: checked === true })}
+            aria-label="Autosave"
+          />
+          Auto-save
+        </label>
+      </div>
+
       {/* Project persistence */}
       <div className="flex items-center gap-1 ml-2">
         <Button
@@ -108,5 +124,39 @@ export function TopBar() {
         </span>
       </div>
     </div>
+  );
+}
+
+/**
+ * Interval input for autosave. Displays plain seconds below 60 and `m:ss` at/above
+ * 60. Values above the 60:00 hard maximum are rejected (the field reverts to the
+ * last valid value on blur). Disabled when autosave is off.
+ */
+function AutosaveIntervalInput() {
+  const { state, dispatch } = useDAW();
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const commit = () => {
+    if (draft === null) return;
+    const parsed = parseAutosaveInterval(draft);
+    if (parsed !== null) {
+      dispatch({ type: 'SET_AUTOSAVE_INTERVAL', seconds: parsed });
+    }
+    setDraft(null);
+  };
+
+  return (
+    <Input
+      type="text"
+      inputMode="numeric"
+      disabled={!state.autosaveEnabled}
+      value={draft ?? formatAutosaveInterval(state.autosaveIntervalSeconds)}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+      className="w-20 h-8 bg-muted border-border text-sm font-mono text-center disabled:opacity-50"
+      title="Autosave interval (seconds, or m:ss up to 60:00)"
+      aria-label="Autosave interval"
+    />
   );
 }

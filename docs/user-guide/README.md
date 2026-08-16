@@ -17,7 +17,7 @@ The app is split into four main areas:
 
 | Area | What it does |
 | ---- | ------------ |
-| **Top bar** | Project name, BPM, time signature, transport (play/stop/loop), save/load/reset, master volume |
+| **Top bar** | Project name, BPM, time signature, transport (play/stop/loop), autosave controls, save/load/reset, master volume |
 | **Instrument sidebar** | Three panels — **Drums**, **Synth**, **Samples** — for patterns, kit sounds, and sample tracks |
 | **Timeline** | Your arrangement: tracks, clips, mute/solo, volume, and the beat ruler |
 | **Editor + Spectrum** | The step sequencer for the selected pattern, plus a live spectrum analyzer |
@@ -32,9 +32,33 @@ The app is split into four main areas:
 - **BPM** — set the tempo (40–300). The transport and step sequencer follow it.
 - **Time signature** — shown as `4/4` (currently fixed).
 - **Transport** — ▶ play, ⏹ stop, and the **loop** toggle (🔁).
+- **Autosave** — a checkbox plus an interval field (see below).
 - **Save / Load / Reset** — persist your project to browser storage, load it
   back, or reset to the defaults.
 - **Master volume** — the overall output level.
+
+### Autosave
+
+Groove Composer can save your work automatically, but you control how — and
+whether — it does. The **Auto-save** checkbox and the interval field sit next
+to each other in the top bar.
+
+- **Auto-save checkbox** — turn automatic saving on or off. When it's off, the
+  app never saves on its own; use the **Save** button to persist your work.
+- **Interval field** — how often to autosave, shown as `mm:ss` (e.g. `00:30`,
+  `01:00`, `60:00`). The maximum is **60 minutes**. When autosave is off, this
+  field is disabled.
+
+> 💾 Your autosave preference is remembered separately from your project, so
+> it survives reloads and is never overwritten when you load a project.
+
+**Which setting should I use?**
+
+| Setting | Best for |
+| ------- | -------- |
+| **Autosave on, short interval** (e.g. `00:30`) | Safe default — you lose at most half a minute of work. |
+| **Autosave on, long interval** (e.g. `10:00`) | Fewer writes while still protecting against major data loss. |
+| **Autosave off** | Deliberate, manual saving — useful when you want to explore freely and only keep changes you explicitly save. |
 
 > 💾 Projects **autosave** to your browser's local storage, so your work
 > survives a refresh.
@@ -125,7 +149,8 @@ way to see your mix come alive as you play.
 
 ## Keyboard & tips
 
-- Projects autosave automatically — no need to hit Save constantly.
+- Autosave is on by default — but you can turn it off or change the interval in
+  the top bar. When it's off, remember to hit **Save**.
 - Use **Reset project** to start fresh from the defaults.
 - Mute/solo individual tracks to audition parts of your mix.
 

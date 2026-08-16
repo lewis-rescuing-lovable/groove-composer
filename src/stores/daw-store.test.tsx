@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 import { DAWProvider } from './daw-store';
-import { useDAW, getActivePatternId, serializeProject, deserializeProject } from './daw-store-context';
+import { useDAW, getActivePatternId, serializeProject, deserializeProject, savePrefsToStorage, loadPrefsFromStorage, PREFS_KEY } from './daw-store-context';
 import { createEmptyDrumGrid } from '@/lib/types';
 
 // We can't import the reducer directly; drive it through the provider.
@@ -16,7 +16,7 @@ describe('daw-store reducer', () => {
     expect(s.projectName).toBe('Starter Project');
     expect(s.bpm).toBe(120);
     expect(s.masterVolume).toBe(0.8);
-    expect(s.loopEnabled).toBe(false);
+    expect(s.loopEnabled).toBe(true);
     expect(s.tracks).toHaveLength(2);
     expect(s.tracks[0].name).toBe('Drums');
     expect(s.drumPatterns).toHaveLength(2);
@@ -184,9 +184,9 @@ describe('daw-store reducer', () => {
         },
       }),
     );
-    expect(result.current.state.tracks[0].clips).toHaveLength(4);
-    act(() => result.current.dispatch({ type: 'REMOVE_CLIP', trackId: 'track-1', clipId: 'clip-2' }));
     expect(result.current.state.tracks[0].clips).toHaveLength(3);
+    act(() => result.current.dispatch({ type: 'REMOVE_CLIP', trackId: 'track-1', clipId: 'clip-2' }));
+    expect(result.current.state.tracks[0].clips).toHaveLength(2);
   });
 
   it('adds a sample track with ADD_SAMPLE_TRACK', () => {
@@ -235,7 +235,7 @@ describe('daw-store reducer', () => {
         startBeat: 4,
       }),
     );
-    expect(result.current.state.tracks[0].clips).toHaveLength(2);
+    expect(result.current.state.tracks[0].clips).toHaveLength(1);
     expect(result.current.state.tracks[1].clips).toHaveLength(2);
     expect(result.current.state.tracks[1].clips.find(c => c.id === 'clip-1')?.startBeat).toBe(4);
     expect(result.current.state.selectedTrackId).toBe(targetId);
@@ -256,8 +256,8 @@ describe('daw-store reducer', () => {
   it('duplicates a clip with DUPLICATE_CLIP', () => {
     const { result } = renderDAW();
     act(() => result.current.dispatch({ type: 'DUPLICATE_CLIP', trackId: 'track-1', clipId: 'clip-1' }));
-    expect(result.current.state.tracks[0].clips).toHaveLength(4);
-    const dup = result.current.state.tracks[0].clips[3];
+    expect(result.current.state.tracks[0].clips).toHaveLength(3);
+    const dup = result.current.state.tracks[0].clips[2];
     expect(dup.startBeat).toBe(4);
     expect(dup.id).not.toBe('clip-1');
   });
@@ -323,7 +323,7 @@ describe('getActivePatternId', () => {
       selectedTrackId: 'track-1',
       selectedClipId: 'clip-1',
     });
-    expect(getActivePatternId(s)).toBe('840b8v85');
+    expect(getActivePatternId(s)).toBe('default-pattern');
   });
 });
 
@@ -429,5 +429,54 @@ describe('persistence', () => {
     let ok: boolean | null = null;
     act(() => { ok = result.current.loadProject(); });
     expect(ok).toBe(false);
+  });
+});
+
+describe('autosave preferences', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('defaults to autosave enabled at 5s', () => {
+    const { result } = renderDAW();
+    expect(result.current.state.autosaveEnabled).toBe(true);
+    expect(result.current.state.autosaveIntervalSeconds).toBe(5);
+  });
+
+  it('SET_AUTOSAVE_ENABLED toggles the preference', () => {
+    const { result } = renderDAW();
+    act(() => result.current.dispatch({ type: 'SET_AUTOSAVE_ENABLED', enabled: false }));
+    expect(result.current.state.autosaveEnabled).toBe(false);
+  });
+
+  it('SET_AUTOSAVE_INTERVAL clamps to the 60:00 maximum', () => {
+    const { result } = renderDAW();
+    act(() => result.current.dispatch({ type: 'SET_AUTOSAVE_INTERVAL', seconds: 99999 }));
+    expect(result.current.state.autosaveIntervalSeconds).toBe(3600);
+    act(() => result.current.dispatch({ type: 'SET_AUTOSAVE_INTERVAL', seconds: 0 }));
+    expect(result.current.state.autosaveIntervalSeconds).toBe(1);
+  });
+
+  it('prefs persist to their own key, separate from the project', () => {
+    const { result } = renderDAW();
+    act(() => result.current.dispatch({ type: 'SET_AUTOSAVE_ENABLED', enabled: false }));
+    act(() => result.current.dispatch({ type: 'SET_AUTOSAVE_INTERVAL', seconds: 300 }));
+    // Prefs are written to their own key.
+    expect(window.localStorage.getItem(PREFS_KEY)).toContain('"autosaveEnabled":false');
+    // The project key must NOT contain prefs (it may be null until the timer fires).
+    const projectRaw = window.localStorage.getItem('groove-composer:project');
+    expect(projectRaw === null || !projectRaw.includes('autosaveEnabled')).toBe(true);
+  });
+
+  it('an "off" preference is respected on a fresh load', () => {
+    savePrefsToStorage({ autosaveEnabled: false, autosaveIntervalSeconds: 120 });
+    const { result } = renderDAW();
+    expect(result.current.state.autosaveEnabled).toBe(false);
+    expect(result.current.state.autosaveIntervalSeconds).toBe(120);
+  });
+
+  it('loadPrefsFromStorage falls back to defaults on invalid data', () => {
+    window.localStorage.setItem(PREFS_KEY, 'not json');
+    expect(loadPrefsFromStorage()).toEqual({ autosaveEnabled: true, autosaveIntervalSeconds: 5 });
   });
 });

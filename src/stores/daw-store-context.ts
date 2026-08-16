@@ -3,6 +3,7 @@ import {
   DAWProject, Track, DrumPattern, Clip, ClipType,
   generateId, createEmptyDrumGrid, DrumSound,
 } from '@/lib/types';
+import { AUTOSAVE_MAX_SECONDS } from '@/lib/autosave-time';
 
 // Default pattern
 const defaultPattern: DrumPattern = {
@@ -38,9 +39,8 @@ const defaultTrack: Track = {
   muted: false,
   solo: false,
   clips: [
-    { id: 'clip-1', type: 'drum', startBeat: 0, durationBeats: 4, patternId: '840b8v85' },
+    { id: 'clip-1', type: 'drum', startBeat: 0, durationBeats: 4, patternId: 'default-pattern' },
     { id: '7hgjpbxs', type: 'drum', startBeat: 4, durationBeats: 4, patternId: 'default-pattern' },
-    { id: 'xqcnm3th', type: 'drum', startBeat: 8, durationBeats: 4, patternId: 'default-pattern' },
   ],
 };
 
@@ -66,6 +66,10 @@ export interface DAWState extends DAWProject {
   selectedTrackId: string | null;
   selectedClipId: string | null;
   activePanel: 'drums' | 'synth' | 'samples';
+  /** User preference: whether autosave is enabled. Persisted separately. */
+  autosaveEnabled: boolean;
+  /** User preference: autosave interval in seconds (1..3600). Persisted separately. */
+  autosaveIntervalSeconds: number;
 }
 
 /** Derive the active pattern from the selected track */
@@ -87,7 +91,7 @@ export const initialState: DAWState = {
   drumPatterns: [defaultPattern, clapCymbalPattern],
   synthPatterns: [],
   masterVolume: 0.8,
-  loopEnabled: false,
+  loopEnabled: true,
   loopStart: 0,
   loopEnd: 4,
   isPlaying: false,
@@ -95,6 +99,8 @@ export const initialState: DAWState = {
   selectedTrackId: 'track-1',
   selectedClipId: null,
   activePanel: 'drums',
+  autosaveEnabled: true,
+  autosaveIntervalSeconds: 5,
 };
 
 export type Action =
@@ -127,7 +133,9 @@ export type Action =
   | { type: 'SET_ACTIVE_PANEL'; panel: 'drums' | 'synth' | 'samples' }
   | { type: 'SELECT_TRACK'; trackId: string }
   | { type: 'LOAD_PROJECT'; project: DAWProject }
-  | { type: 'RESET_PROJECT' };
+  | { type: 'RESET_PROJECT' }
+  | { type: 'SET_AUTOSAVE_ENABLED'; enabled: boolean }
+  | { type: 'SET_AUTOSAVE_INTERVAL'; seconds: number };
 
 export function reducer(state: DAWState, action: Action): DAWState {
   switch (action.type) {
@@ -387,6 +395,13 @@ export function reducer(state: DAWState, action: Action): DAWState {
       return { ...state, ...action.project, isPlaying: false, currentStep: -1 };
     case 'RESET_PROJECT':
       return { ...initialState };
+    case 'SET_AUTOSAVE_ENABLED':
+      return { ...state, autosaveEnabled: action.enabled };
+    case 'SET_AUTOSAVE_INTERVAL': {
+      // Clamp to the valid range; anything above the 60:00 max is rejected.
+      const seconds = Math.max(1, Math.min(AUTOSAVE_MAX_SECONDS, action.seconds));
+      return { ...state, autosaveIntervalSeconds: seconds };
+    }
     default:
       return state;
   }
@@ -411,6 +426,40 @@ export const DAWContext = createContext<DAWContextType | null>(null);
 
 // ─── Persistence ─────────────────────────────────────────────
 export const STORAGE_KEY = 'groove-composer:project';
+export const PREFS_KEY = 'groove-composer:prefs';
+
+export interface DAWPrefs {
+  autosaveEnabled: boolean;
+  autosaveIntervalSeconds: number;
+}
+
+const defaultPrefs: DAWPrefs = {
+  autosaveEnabled: true,
+  autosaveIntervalSeconds: 5,
+};
+
+/** Persist autosave preferences to their own storage key (separate from the project). */
+export function savePrefsToStorage(prefs: DAWPrefs): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+}
+
+/** Load autosave preferences, falling back to defaults on any failure. */
+export function loadPrefsFromStorage(): DAWPrefs {
+  if (typeof window === 'undefined') return defaultPrefs;
+  try {
+    const raw = window.localStorage.getItem(PREFS_KEY);
+    if (!raw) return defaultPrefs;
+    const data = JSON.parse(raw) as Partial<DAWPrefs>;
+    const enabled = typeof data.autosaveEnabled === 'boolean' ? data.autosaveEnabled : defaultPrefs.autosaveEnabled;
+    const seconds = typeof data.autosaveIntervalSeconds === 'number'
+      ? Math.max(1, Math.min(AUTOSAVE_MAX_SECONDS, data.autosaveIntervalSeconds))
+      : defaultPrefs.autosaveIntervalSeconds;
+    return { autosaveEnabled: enabled, autosaveIntervalSeconds: seconds };
+  } catch {
+    return defaultPrefs;
+  }
+}
 
 /** Serialize only the project data (no transient playback/selection state). */
 export function serializeProject(state: DAWState): string {
