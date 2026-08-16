@@ -222,5 +222,3 @@ const NoteCell = memo(function NoteCell({
     />
   );
 });
-
-

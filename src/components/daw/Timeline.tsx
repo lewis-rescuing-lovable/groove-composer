@@ -348,4 +348,3 @@ function ClipBlock({
     </div>
   );
 }
-
