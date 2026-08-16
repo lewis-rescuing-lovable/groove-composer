@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useDAW } from '@/stores/daw-store-context';
 import { midiToFrequency, DEFAULT_SYNTH_VOICE, type SynthPattern } from '@/lib/types';
 
@@ -42,6 +42,17 @@ export function SynthEditor() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [viewportW, setViewportW] = useState(0);
+
+  // Measure the viewport width on mount and on resize so the grid renders fully
+  // on first load, rather than only after the user scrolls (which fires onScroll).
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setViewportW(el.clientWidth);
+    const onResize = () => setViewportW(el.clientWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const selectedTrack = state.tracks.find(t => t.id === state.selectedTrackId);
   const activeClip = selectedTrack?.clips.find(c =>

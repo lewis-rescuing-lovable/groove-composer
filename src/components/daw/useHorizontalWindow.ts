@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 
 /**
  * A small horizontal-windowing hook for virtualized grids. It tracks the
@@ -11,6 +11,17 @@ export function useHorizontalWindow(itemWidth: number, totalItems: number, overs
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [viewportW, setViewportW] = useState(0);
+
+  // Measure the viewport width on mount and on resize so the initial render shows
+  // the full window, rather than only after the user scrolls (which fires onScroll).
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setViewportW(el.clientWidth);
+    const onResize = () => setViewportW(el.clientWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
