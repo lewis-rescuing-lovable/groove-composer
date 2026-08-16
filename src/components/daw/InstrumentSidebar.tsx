@@ -1,11 +1,14 @@
 import { useDAW, getActivePatternId } from '@/stores/daw-store-context';
 import { generateId, createEmptyDrumGrid, DRUM_LABELS, DRUM_SOUNDS } from '@/lib/types';
-import { Drum, Music, FileAudio, Plus, Trash2, Pencil } from 'lucide-react';
+import { SAMPLE_LIBRARY } from '@/lib/samples';
+import { Drum, Music, FileAudio, Plus, Trash2, Pencil, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
 export function InstrumentSidebar() {
-  const { state, dispatch, previewSound } = useDAW();
+  const { state, dispatch, previewSound, previewSample } = useDAW();
+  const [loadingSample, setLoadingSample] = useState<string | null>(null);
+  const [sampleError, setSampleError] = useState<string | null>(null);
 
   const activePatternId = getActivePatternId(state);
 
@@ -143,8 +146,46 @@ export function InstrumentSidebar() {
         )}
 
         {state.activePanel === 'samples' && (
-          <div className="flex items-center justify-center h-32 text-muted-foreground text-xs font-mono">
-            Sample library coming soon
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Sample Library</span>
+            </div>
+            <p className="text-[10px] font-mono text-muted-foreground leading-relaxed">
+              Fetched at runtime from the OLPC Berklee Sound Library (CC BY 3.0). Click to preview.
+            </p>
+            {sampleError && (
+              <div className="flex items-start gap-1.5 text-[10px] font-mono text-destructive bg-destructive/10 rounded p-2">
+                <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
+                <span>{sampleError}</span>
+              </div>
+            )}
+            <div className="space-y-1">
+              {SAMPLE_LIBRARY.map(sample => (
+                <button
+                  key={sample.id}
+                  onClick={async () => {
+                    setSampleError(null);
+                    setLoadingSample(sample.id);
+                    try {
+                      await previewSample(sample.id);
+                    } catch (err) {
+                      setSampleError(err instanceof Error ? err.message : String(err));
+                    } finally {
+                      setLoadingSample(null);
+                    }
+                  }}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded text-xs font-mono bg-card border border-border
+                    hover:bg-daw-step-hover hover:border-primary/30 transition-colors text-secondary-foreground"
+                >
+                  <span className="truncate">{sample.name}</span>
+                  {loadingSample === sample.id ? (
+                    <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
+                  ) : (
+                    <span className="shrink-0 text-[9px] uppercase tracking-wider text-muted-foreground">{sample.category}</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -27,7 +27,9 @@ describe('InstrumentSidebar', () => {
     fireEvent.click(screen.getByText('Synth'));
     expect(screen.getByText('Synthesizer coming soon')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Samples'));
-    expect(screen.getByText('Sample library coming soon')).toBeInTheDocument();
+    expect(screen.getByText('Sample Library')).toBeInTheDocument();
+    // A curated sample from the library is listed
+    expect(screen.getByText('Kalimba')).toBeInTheDocument();
   });
 
   it('shows the default pattern in the drums panel', () => {

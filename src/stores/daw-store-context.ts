@@ -372,6 +372,7 @@ export interface DAWContextType {
   stop: () => void;
   pause: () => void;
   previewSound: (sound: DrumSound) => void;
+  previewSample: (sampleId: string) => Promise<void>;
   getActivePattern: () => DrumPattern | null;
   saveProject: () => void;
   loadProject: () => boolean;

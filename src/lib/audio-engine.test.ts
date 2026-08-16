@@ -252,6 +252,42 @@ describe('AudioEngine', () => {
     });
   });
 
+  describe('playSample', () => {
+    it('throws when no sample loader is attached', async () => {
+      audioEngine.init();
+      await expect(audioEngine.playSample('kalimba')).rejects.toThrow('No sample loader');
+    });
+
+    it('plays a loaded sample buffer', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn().mockResolvedValue({
+          status: 'ready',
+          buffer: { length: 100 },
+          error: null,
+        }),
+      };
+      audioEngine.setSampleLoader(loader as never);
+      await expect(audioEngine.playSample('kalimba')).resolves.toBeUndefined();
+      expect(loader.load).toHaveBeenCalledWith('kalimba');
+    });
+
+    it('rejects when the sample failed to load', async () => {
+      audioEngine.init();
+      const loader = {
+        setContext: vi.fn(),
+        load: vi.fn().mockResolvedValue({
+          status: 'error',
+          buffer: null,
+          error: 'boom',
+        }),
+      };
+      audioEngine.setSampleLoader(loader as never);
+      await expect(audioEngine.playSample('kalimba')).rejects.toThrow('boom');
+    });
+  });
+
   describe('dispose', () => {
     it('stops and closes context', () => {
       audioEngine.init();

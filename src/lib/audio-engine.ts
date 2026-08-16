@@ -1,4 +1,5 @@
 import { DrumSound, DrumPattern, DRUM_SOUNDS, Track, Clip } from './types';
+import { SampleLoader } from './sample-loader';
 
 interface TrackPlaybackInfo {
   track: Track;
@@ -24,11 +25,18 @@ class AudioEngine {
   private trackAnalysers: Map<string, AnalyserNode> = new Map();
   private lookahead = 0.1;
   private scheduleInterval = 25;
+  private sampleLoader: SampleLoader | null = null;
 
   get context(): AudioContext | null { return this.ctx; }
   get analyserNode(): AnalyserNode | null { return this.analyser; }
   get playing(): boolean { return this.isPlaying; }
   get step(): number { return this.currentStep; }
+
+  /** Attach a sample loader so the engine can play fetched samples. */
+  setSampleLoader(loader: SampleLoader | null) {
+    this.sampleLoader = loader;
+    if (loader) loader.setContext(this.ctx);
+  }
 
   init() {
     if (this.ctx) return;
@@ -39,6 +47,7 @@ class AudioEngine {
     this.analyser.fftSize = 256;
     this.masterGain.connect(this.analyser);
     this.analyser.connect(this.ctx.destination);
+    this.sampleLoader?.setContext(this.ctx);
   }
 
   setMasterVolume(v: number) {
@@ -346,6 +355,30 @@ class AudioEngine {
     this.init();
     if (this.ctx?.state === 'suspended') this.ctx.resume();
     this.playDrumSound(sound, this.ctx!.currentTime);
+  }
+
+  /**
+   * Play a fetched sample by id. Loads (and caches) the buffer on first use,
+   * then schedules it through the given destination (defaults to master).
+   * Returns a promise that resolves once the sample is scheduled, or rejects
+   * if the sample could not be loaded.
+   */
+  async playSample(sampleId: string, destination?: AudioNode): Promise<void> {
+    if (!this.sampleLoader) {
+      throw new Error('No sample loader attached');
+    }
+    this.init();
+    if (this.ctx?.state === 'suspended') this.ctx.resume();
+    const entry = await this.sampleLoader.load(sampleId);
+    if (entry.status !== 'ready' || !entry.buffer) {
+      throw new Error(entry.error ?? `Sample not ready: ${sampleId}`);
+    }
+    const ctx = this.ctx!;
+    const dest = destination || this.masterGain!;
+    const source = ctx.createBufferSource();
+    source.buffer = entry.buffer;
+    source.connect(dest);
+    source.start(ctx.currentTime);
   }
 
   dispose() {

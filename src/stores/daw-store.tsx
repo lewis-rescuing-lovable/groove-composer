@@ -1,6 +1,7 @@
 import React, { useReducer, useCallback, useRef, useEffect } from 'react';
 import { DrumSound, DrumPattern } from '@/lib/types';
 import { audioEngine } from '@/lib/audio-engine';
+import { sampleLoader } from '@/lib/sample-loader';
 import {
   DAWContext, DAWState, Action, reducer, initialState,
   getActivePatternId, serializeProject, loadFromStorage, STORAGE_KEY,
@@ -14,6 +15,11 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
   });
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  // Attach the shared sample loader to the audio engine once.
+  useEffect(() => {
+    audioEngine.setSampleLoader(sampleLoader);
+  }, []);
 
   const getActivePattern = useCallback((): DrumPattern | null => {
     const patternId = getActivePatternId(stateRef.current);
@@ -114,9 +120,13 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
     audioEngine.previewSound(sound);
   }, []);
 
+  const previewSample = useCallback(async (sampleId: string) => {
+    await audioEngine.playSample(sampleId);
+  }, []);
+
   return (
     <DAWContext.Provider
-      value={{ state, dispatch, play, stop, pause, previewSound, getActivePattern, saveProject, loadProject, resetProject }}
+      value={{ state, dispatch, play, stop, pause, previewSound, previewSample, getActivePattern, saveProject, loadProject, resetProject }}
     >
       {children}
     </DAWContext.Provider>
