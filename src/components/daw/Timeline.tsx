@@ -5,13 +5,26 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useRef, useState, useCallback } from 'react';
 import { SampleWaveform } from './SampleWaveform';
+import { useHorizontalWindow } from './useHorizontalWindow';
 
 const BEAT_WIDTH = 60;
-const BEATS_TO_SHOW = 32;
 const SNAP = 0.5; // snap to half-beats
+const MIN_BEATS = 32; // minimum timeline length (bars)
 
 function snapBeat(beat: number): number {
   return Math.round(beat / SNAP) * SNAP;
+}
+
+/** Derive the timeline length in beats from the furthest clip end. */
+function timelineBeats(tracks: TrackType[]): number {
+  let maxBeat = MIN_BEATS;
+  for (const track of tracks) {
+    for (const clip of track.clips) {
+      const end = clip.startBeat + clip.durationBeats;
+      if (end > maxBeat) maxBeat = end;
+    }
+  }
+  return maxBeat;
 }
 
 // ─── Main Timeline ────────────────────────────────────────────
@@ -20,6 +33,7 @@ export function Timeline() {
 
   const addTrack = () => dispatch({ type: 'ADD_TRACK_WITH_PATTERN' });
   const showWarning = state.tracks.length >= 16;
+  const beats = timelineBeats(state.tracks);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
@@ -32,7 +46,7 @@ export function Timeline() {
       {/* Body: single vertical scroll; ruler + all lanes share one horizontal scroll */}
       <div className="flex-1 overflow-y-auto">
         <div className="overflow-x-auto">
-          <div style={{ width: BEATS_TO_SHOW * BEAT_WIDTH + 208 }}>
+          <div style={{ width: beats * BEAT_WIDTH + 208 }}>
             {/* Ruler row (sticky top, scrolls horizontally with the grid) */}
             <div className="sticky top-0 z-10 flex border-b border-border bg-background">
               <div className="w-52 shrink-0 px-3 py-1.5 flex items-center justify-between border-r border-border">
@@ -42,8 +56,8 @@ export function Timeline() {
                 </Button>
               </div>
               <div className="flex-1">
-                <div className="flex" style={{ width: BEATS_TO_SHOW * BEAT_WIDTH }}>
-                  {Array.from({ length: BEATS_TO_SHOW }, (_, i) => (
+                <div className="flex" style={{ width: beats * BEAT_WIDTH }}>
+                  {Array.from({ length: beats }, (_, i) => (
                     <div
                       key={i}
                       className={`text-[10px] font-mono py-1.5 border-r
@@ -59,7 +73,7 @@ export function Timeline() {
 
             {/* Track lanes */}
             {state.tracks.map(track => (
-              <TrackLane key={track.id} track={track} />
+              <TrackLane key={track.id} track={track} beats={beats} />
             ))}
           </div>
         </div>
@@ -74,10 +88,14 @@ export function Timeline() {
 }
 
 // ─── Track Lane (controls sticky-left + grid row, shares horizontal scroll) ──
-function TrackLane({ track }: { track: TrackType }) {
+function TrackLane({ track, beats }: { track: TrackType; beats: number }) {
   const { state, dispatch } = useDAW();
   const isSelected = state.selectedTrackId === track.id;
   const laneRef = useRef<HTMLDivElement>(null);
+
+  // Virtualize the grid lines: only render the visible beat window.
+  const { scrollRef, onScroll, totalW, start, end } = useHorizontalWindow(BEAT_WIDTH, beats);
+  const visibleBeats = Array.from({ length: end - start }, (_, i) => start + i);
 
   // Handle drop from another track
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -153,9 +171,9 @@ function TrackLane({ track }: { track: TrackType }) {
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-        <div className="relative h-full" style={{ width: BEATS_TO_SHOW * BEAT_WIDTH }}>
-          {/* Grid lines */}
-          {Array.from({ length: BEATS_TO_SHOW }, (_, i) => (
+        <div ref={scrollRef} onScroll={onScroll} className="relative h-full overflow-x-auto" style={{ width: totalW }}>
+          {/* Grid lines (windowed) */}
+          {visibleBeats.map(i => (
             <div
               key={i}
               className={`absolute top-0 bottom-0 border-r ${i % 4 === 0 ? 'border-daw-grid-line-strong' : 'border-daw-grid-line'}`}

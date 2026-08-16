@@ -78,6 +78,65 @@ describe('daw-store reducer', () => {
     expect(result.current.state.drumPatterns[0].grid.kick[2]).toBe(false);
   });
 
+  it('toggles a synth note with TOGGLE_SYNTH_NOTE', () => {
+    const { result } = renderDAW();
+    // Seed a synth pattern via LOAD_PROJECT (the default state has none).
+    act(() =>
+      result.current.dispatch({
+        type: 'LOAD_PROJECT',
+        project: {
+          projectName: 'Synth',
+          bpm: 90,
+          timeSignature: [4, 4],
+          tracks: [],
+          drumPatterns: [],
+          synthPatterns: [{ id: 'sp1', name: 'Canon', notes: [] }],
+          masterVolume: 0.8,
+          loopEnabled: true,
+          loopStart: 0,
+          loopEnd: 4,
+        },
+      }),
+    );
+    // Add a note at pitch 62, step 0.
+    act(() => result.current.dispatch({ type: 'TOGGLE_SYNTH_NOTE', patternId: 'sp1', pitch: 62, step: 0 }));
+    expect(result.current.state.synthPatterns[0].notes).toContainEqual(
+      expect.objectContaining({ pitch: 62, startStep: 0 }),
+    );
+    // Toggle again removes it.
+    act(() => result.current.dispatch({ type: 'TOGGLE_SYNTH_NOTE', patternId: 'sp1', pitch: 62, step: 0 }));
+    expect(result.current.state.synthPatterns[0].notes).toHaveLength(0);
+    // Toggling a missing pattern leaves state untouched.
+    act(() => result.current.dispatch({ type: 'TOGGLE_SYNTH_NOTE', patternId: 'missing', pitch: 62, step: 0 }));
+    expect(result.current.state.synthPatterns[0].notes).toHaveLength(0);
+  });
+
+  it('sets synth pattern steps with SET_SYNTH_PATTERN_STEPS', () => {
+    const { result } = renderDAW();
+    act(() =>
+      result.current.dispatch({
+        type: 'LOAD_PROJECT',
+        project: {
+          projectName: 'Synth',
+          bpm: 90,
+          timeSignature: [4, 4],
+          tracks: [],
+          drumPatterns: [],
+          synthPatterns: [{ id: 'sp1', name: 'Canon', notes: [] }],
+          masterVolume: 0.8,
+          loopEnabled: true,
+          loopStart: 0,
+          loopEnd: 4,
+        },
+      }),
+    );
+    act(() => result.current.dispatch({ type: 'SET_SYNTH_PATTERN_STEPS', patternId: 'sp1', steps: 128 }));
+    expect(result.current.state.synthPatterns[0].steps).toBe(128);
+    // Clamps to a minimum of 1.
+    act(() => result.current.dispatch({ type: 'SET_SYNTH_PATTERN_STEPS', patternId: 'sp1', steps: 0 }));
+    expect(result.current.state.synthPatterns[0].steps).toBe(1);
+  });
+
   it('adds a pattern with ADD_PATTERN', () => {
     const { result } = renderDAW();
     const pattern = {
@@ -207,6 +266,19 @@ describe('daw-store reducer', () => {
     expect(track.clips[0].type).toBe('sample');
     expect(track.clips[0].sampleId).toBe('kalimba');
     expect(track.clips[0].loop).toBe(true);
+    // New track is selected
+    expect(result.current.state.selectedTrackId).toBe(track.id);
+  });
+
+  it('adds a synth track with ADD_SYNTH_TRACK', () => {
+    const { result } = renderDAW();
+    act(() => result.current.dispatch({ type: 'ADD_SYNTH_TRACK' }));
+    const track = result.current.state.tracks[result.current.state.tracks.length - 1];
+    expect(track.clips).toHaveLength(1);
+    expect(track.clips[0].type).toBe('synth');
+    // A new synth pattern was created and referenced by the clip.
+    const patternId = track.clips[0].patternId;
+    expect(result.current.state.synthPatterns.some(p => p.id === patternId)).toBe(true);
     // New track is selected
     expect(result.current.state.selectedTrackId).toBe(track.id);
   });

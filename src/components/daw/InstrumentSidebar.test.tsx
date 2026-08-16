@@ -57,7 +57,10 @@ describe('InstrumentSidebar', () => {
     renderSidebar(allPanels);
     expect(screen.getByText('Synth')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Synth'));
-    expect(screen.getByText('Synthesizer coming soon')).toBeInTheDocument();
+    // The synth panel shows its waveform controls and keyboard.
+    expect(screen.getByText('Waveform')).toBeInTheDocument();
+    expect(screen.getByText('Envelope')).toBeInTheDocument();
+    expect(screen.getByText('Keyboard')).toBeInTheDocument();
   });
 
   it('shows the default pattern in the drums panel', () => {

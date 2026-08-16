@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Timeline } from '@/components/daw/Timeline';
 import { DAWProvider } from '@/stores/daw-store';
 import type { DAWState } from '@/stores/daw-store-context';
+import { withPlayControl } from './withPlayControl';
 
 const meta = {
   title: 'DAW/Timeline',
@@ -163,6 +164,140 @@ export const WithSamples: Story = {
     (Story) => (
       <DAWProvider initialState={stateWithSamples}>
         <Story />
+      </DAWProvider>
+    ),
+  ],
+};
+
+// ─── Pachelbel's Canon in D ────────────────────────────────────
+// A real arrangement (ground bass + melody) encoded as a Standard MIDI File and
+// converted to the app's SynthNote format via src/lib/midi.ts. The 8-bar
+// progression (D - A - Bm - F#m - G - D - G - A) repeats on loop, played with a
+// piano voice.
+import { CANON_SYNTH_PATTERN } from '@/lib/canon-midi';
+
+const stateWithSynth: DAWState = {
+  projectName: 'Pachelbel Canon in D',
+  bpm: 90,
+  timeSignature: [4, 4] as [number, number],
+  tracks: [
+    {
+      id: 'track-synth',
+      name: 'Canon Piano',
+      volume: 0.8,
+      pan: 0,
+      muted: false,
+      solo: false,
+      clips: [
+        { id: 'clip-canon', type: 'synth', startBeat: 0, durationBeats: 32, patternId: 'canon-pattern' },
+      ],
+    },
+  ],
+  drumPatterns: [],
+  synthPatterns: [CANON_SYNTH_PATTERN],
+  masterVolume: 0.8,
+  loopEnabled: true,
+  loopStart: 0,
+  loopEnd: 32,
+  isPlaying: false,
+  currentStep: -1,
+  selectedTrackId: 'track-synth',
+  selectedClipId: null,
+  masterMuted: false,
+  autosaveEnabled: false,
+  autosaveIntervalSeconds: 5,
+};
+
+export const CanonInD: Story = {
+  name: 'Pachelbel Canon in D (synth, loop)',
+  args: { play: false, bpm: 90 },
+  argTypes: {
+    play: {
+      control: 'boolean',
+      description: 'Start / stop playback of the seeded pattern.',
+    },
+    bpm: {
+      control: { type: 'number', min: 40, max: 300, step: 1 },
+      description: 'Tempo in beats per minute.',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A single synth track playing Pachelbel\u2019s Canon in D. The 8-bar arrangement (ground bass + melody) was encoded as a Standard MIDI File and converted to the app\u2019s SynthNote format via src/lib/midi.ts. It repeats on loop; toggle Play to hear it.',
+      },
+    },
+  },
+  decorators: [
+    (Story, context) => (
+      <DAWProvider initialState={stateWithSynth}>
+        {withPlayControl(Story, context)}
+      </DAWProvider>
+    ),
+  ],
+};
+
+// ─── Beethoven's Ode to Joy ─────────────────────────────────────
+import { ODE_TO_JOY_SYNTH_PATTERN } from '@/lib/ode-to-joy';
+
+const stateWithOde: DAWState = {
+  projectName: 'Ode to Joy',
+  bpm: 100,
+  timeSignature: [4, 4] as [number, number],
+  tracks: [
+    {
+      id: 'track-ode',
+      name: 'Ode to Joy',
+      volume: 0.8,
+      pan: 0,
+      muted: false,
+      solo: false,
+      clips: [
+        { id: 'clip-ode', type: 'synth', startBeat: 0, durationBeats: 32, patternId: 'ode-to-joy-pattern' },
+      ],
+    },
+  ],
+  drumPatterns: [],
+  synthPatterns: [ODE_TO_JOY_SYNTH_PATTERN],
+  masterVolume: 0.8,
+  loopEnabled: true,
+  loopStart: 0,
+  loopEnd: 32,
+  isPlaying: false,
+  currentStep: -1,
+  selectedTrackId: 'track-ode',
+  selectedClipId: null,
+  masterMuted: false,
+  autosaveEnabled: false,
+  autosaveIntervalSeconds: 5,
+};
+
+export const OdeToJoy: Story = {
+  name: 'Ode to Joy (synth, loop)',
+  args: { play: false, bpm: 100 },
+  argTypes: {
+    play: {
+      control: 'boolean',
+      description: 'Start / stop playback of the seeded pattern.',
+    },
+    bpm: {
+      control: { type: 'number', min: 40, max: 300, step: 1 },
+      description: 'Tempo in beats per minute.',
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A single synth track playing Beethoven\u2019s Ode to Joy. The melody (right hand) and bass (left hand) were encoded as a Standard MIDI File and converted to the app\u2019s SynthNote format via src/lib/midi.ts. It repeats on loop; toggle Play to hear it.',
+      },
+    },
+  },
+  decorators: [
+    (Story, context) => (
+      <DAWProvider initialState={stateWithOde}>
+        {withPlayControl(Story, context)}
       </DAWProvider>
     ),
   ],

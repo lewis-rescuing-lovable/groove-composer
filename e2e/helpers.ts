@@ -89,12 +89,15 @@ export const selectors = {
  */
 
 /**
- * Asserts the Synth panel renders its expected content. The Synth tab is not
- * part of the app's sidebar (it's omitted until the synth is implemented), so
- * this fixture is only used by Storybook-driven checks / future synth work.
+ * Asserts the Synth panel renders its expected content. The Synth tab is part
+ * of the app's sidebar, so this fixture is used by the app e2e specs.
  */
 export async function checkSynthesizer(page: Page) {
-  await expect(page.getByText("Synthesizer coming soon")).toBeVisible();
+  await expect(page.getByText("Waveform")).toBeVisible();
+  await expect(page.getByText("Envelope")).toBeVisible();
+  await expect(page.getByText("Keyboard")).toBeVisible();
+  // A preview key is present (exact match to avoid "Play C#").
+  await expect(page.getByRole("button", { name: "Play C", exact: true })).toBeVisible();
 }
 
 /** Asserts the Samples panel renders its expected content. */

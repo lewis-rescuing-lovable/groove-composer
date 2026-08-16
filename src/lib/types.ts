@@ -17,6 +17,55 @@ export type ClipType = 'drum' | 'synth' | 'sample';
 
 export type WaveformType = 'sine' | 'square' | 'sawtooth' | 'triangle';
 
+/**
+ * A synthesizer voice: the oscillator waveform, a low-pass filter, and an
+ * ADSR amplitude envelope. Used by the Synth panel to shape preview notes.
+ */
+export interface SynthVoice {
+  waveform: WaveformType;
+  /** Low-pass filter cutoff in Hz. */
+  filterCutoff: number;
+  /** Low-pass filter resonance (Q). */
+  filterResonance: number;
+  /** Envelope attack time in seconds. */
+  attack: number;
+  /** Envelope decay time in seconds. */
+  decay: number;
+  /** Envelope sustain level (0-1). */
+  sustain: number;
+  /** Envelope release time in seconds. */
+  release: number;
+}
+
+export const DEFAULT_SYNTH_VOICE: SynthVoice = {
+  waveform: 'sawtooth',
+  filterCutoff: 1200,
+  filterResonance: 1,
+  attack: 0.01,
+  decay: 0.2,
+  sustain: 0.6,
+  release: 0.3,
+};
+
+/**
+ * A piano-like voice: a soft triangle wave with a fast attack, a quick decay
+ * to a low sustain, and a longer release — approximating a struck string.
+ */
+export const PIANO_VOICE: SynthVoice = {
+  waveform: 'triangle',
+  filterCutoff: 4000,
+  filterResonance: 0.5,
+  attack: 0.005,
+  decay: 0.4,
+  sustain: 0.25,
+  release: 0.8,
+};
+
+/** Convert a MIDI note number to its frequency in Hz (A4 = 440Hz = MIDI 69). */
+export function midiToFrequency(midi: number): number {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
 export interface DrumPattern {
   id: string;
   name: string;
@@ -28,6 +77,12 @@ export interface SynthPattern {
   id: string;
   name: string;
   notes: SynthNote[];
+  /** Number of steps in the pattern (defaults to 16 = one bar of 4/4). */
+  steps?: number;
+  /** The voice used to play this pattern's notes (defaults to the synth voice). */
+  voice?: SynthVoice;
+  /** When true, notes are played with the richer multi-oscillator piano synthesis. */
+  piano?: boolean;
 }
 
 export interface SynthNote {

@@ -1,5 +1,5 @@
 import React, { useReducer, useCallback, useRef, useEffect } from 'react';
-import { DrumSound, DrumPattern } from '@/lib/types';
+import { DrumSound, DrumPattern, SynthVoice } from '@/lib/types';
 import { audioEngine } from '@/lib/audio-engine';
 import { sampleLoader } from '@/lib/sample-loader';
 import {
@@ -94,8 +94,8 @@ export function DAWProvider({
 
   // Sync all tracks and patterns to the audio engine
   useEffect(() => {
-    audioEngine.setTracks(state.tracks, state.drumPatterns);
-  }, [state.tracks, state.drumPatterns]);
+    audioEngine.setTracks(state.tracks, state.drumPatterns, state.synthPatterns);
+  }, [state.tracks, state.drumPatterns, state.synthPatterns]);
 
   useEffect(() => {
     audioEngine.setLoopEnabled(state.loopEnabled);
@@ -124,7 +124,7 @@ export function DAWProvider({
     // the current state explicitly to guarantee playback starts correctly.
     audioEngine.setMasterVolume(stateRef.current.masterVolume);
     audioEngine.setMasterMuted(stateRef.current.masterMuted);
-    audioEngine.setTracks(stateRef.current.tracks, stateRef.current.drumPatterns);
+    audioEngine.setTracks(stateRef.current.tracks, stateRef.current.drumPatterns, stateRef.current.synthPatterns);
     audioEngine.play();
     dispatch({ type: 'SET_PLAYING', playing: true });
   }, []);
@@ -148,13 +148,21 @@ export function DAWProvider({
     await audioEngine.playSample(sampleId);
   }, []);
 
+  const previewNote = useCallback((midi: number, voice: SynthVoice) => {
+    audioEngine.previewNote(midi, voice);
+  }, []);
+
   const addSampleTrack = useCallback((sampleId: string, name: string, loop: boolean) => {
     dispatch({ type: 'ADD_SAMPLE_TRACK', sampleId, name, loop });
   }, []);
 
+  const addSynthTrack = useCallback(() => {
+    dispatch({ type: 'ADD_SYNTH_TRACK' });
+  }, []);
+
   return (
     <DAWContext.Provider
-      value={{ state, dispatch, play, stop, pause, previewSound, previewSample, addSampleTrack, getActivePattern, saveProject, loadProject, resetProject }}
+      value={{ state, dispatch, play, stop, pause, previewSound, previewSample, previewNote, addSampleTrack, addSynthTrack, getActivePattern, saveProject, loadProject, resetProject }}
     >
       {children}
     </DAWContext.Provider>

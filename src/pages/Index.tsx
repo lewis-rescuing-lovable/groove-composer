@@ -2,15 +2,19 @@ import { DAWProvider } from '@/stores/daw-store';
 import { useDAW } from '@/stores/daw-store-context';
 import { TopBar } from '@/components/daw/TopBar';
 import { InstrumentSidebar } from '@/components/daw/InstrumentSidebar';
-import { DrumsPanel, SamplesPanel } from '@/components/daw/panels';
-import { Drum, FileAudio } from 'lucide-react';
+import { DrumsPanel, SamplesPanel, SynthPanel } from '@/components/daw/panels';
+import { Drum, FileAudio, Music } from 'lucide-react';
 import { Timeline } from '@/components/daw/Timeline';
 import { StepSequencer } from '@/components/daw/StepSequencer';
+import { SynthEditor } from '@/components/daw/SynthEditor';
 import { SpectrumAnalyzer } from '@/components/daw/SpectrumAnalyzer';
 
 function BottomPanel() {
   const { state } = useDAW();
   const selectedTrack = state.tracks.find(t => t.id === state.selectedTrackId);
+  // Show the piano-roll synth editor when the selected track has a synth clip,
+  // otherwise the drum step sequencer.
+  const isSynthTrack = selectedTrack?.clips.some(c => c.type === 'synth') ?? false;
 
   return (
     <div className="border-t border-border bg-card shrink-0" style={{ height: 280 }}>
@@ -26,7 +30,7 @@ function BottomPanel() {
               </span>
             )}
           </div>
-          <StepSequencer />
+          {isSynthTrack ? <SynthEditor /> : <StepSequencer />}
         </div>
         <div className="w-52 p-2">
           <div className="text-[10px] font-mono text-muted-foreground mb-1 uppercase tracking-wider">
@@ -48,6 +52,7 @@ const Index = () => {
           <InstrumentSidebar
             panels={[
               { key: 'drums', label: 'Drums', icon: Drum, content: DrumsPanel },
+              { key: 'synth', label: 'Synth', icon: Music, content: SynthPanel },
               { key: 'samples', label: 'Samples', icon: FileAudio, content: SamplesPanel },
             ]}
           />

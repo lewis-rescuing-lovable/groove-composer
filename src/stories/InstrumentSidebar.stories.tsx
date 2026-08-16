@@ -52,3 +52,12 @@ export const DrumsOnly: Story = {
     ],
   },
 };
+
+export const SynthOnly: Story = {
+  name: 'Synth only',
+  args: {
+    panels: [
+      { key: 'synth', label: 'Synth', icon: Music, content: SynthPanel },
+    ],
+  },
+};

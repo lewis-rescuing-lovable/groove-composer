@@ -4,6 +4,9 @@ import {
   DRUM_LABELS,
   createEmptyDrumGrid,
   generateId,
+  midiToFrequency,
+  DEFAULT_SYNTH_VOICE,
+  PIANO_VOICE,
 } from './types';
 
 describe('DRUM_SOUNDS', () => {
@@ -60,5 +63,37 @@ describe('generateId', () => {
     expect(typeof generateId()).toBe('string');
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
+  });
+});
+
+describe('midiToFrequency', () => {
+  it('maps A4 (MIDI 69) to 440 Hz', () => {
+    expect(midiToFrequency(69)).toBeCloseTo(440, 5);
+  });
+
+  it('maps C4 (MIDI 60) to ~261.63 Hz', () => {
+    expect(midiToFrequency(60)).toBeCloseTo(261.63, 1);
+  });
+
+  it('is an octave up for +12 semitones', () => {
+    expect(midiToFrequency(81)).toBeCloseTo(midiToFrequency(69) * 2, 5);
+  });
+});
+
+describe('DEFAULT_SYNTH_VOICE', () => {
+  it('has a valid waveform and envelope values', () => {
+    expect(['sine', 'square', 'sawtooth', 'triangle']).toContain(DEFAULT_SYNTH_VOICE.waveform);
+    expect(DEFAULT_SYNTH_VOICE.filterCutoff).toBeGreaterThan(0);
+    expect(DEFAULT_SYNTH_VOICE.sustain).toBeGreaterThanOrEqual(0);
+    expect(DEFAULT_SYNTH_VOICE.sustain).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('PIANO_VOICE', () => {
+  it('uses a soft triangle wave with a fast attack and long release', () => {
+    expect(PIANO_VOICE.waveform).toBe('triangle');
+    expect(PIANO_VOICE.attack).toBeLessThanOrEqual(0.01);
+    expect(PIANO_VOICE.release).toBeGreaterThanOrEqual(0.5);
+    expect(PIANO_VOICE.sustain).toBeLessThan(0.5);
   });
 });
