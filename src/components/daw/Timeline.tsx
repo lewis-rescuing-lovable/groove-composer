@@ -106,8 +106,7 @@ function TrackLane({ track }: { track: TrackType }) {
     >
       {/* Track controls (sticky so they stay put while the grid scrolls) */}
       <div
-        className={`w-52 shrink-0 px-2 py-1.5 flex flex-col gap-1 border-r border-border sticky left-0 z-[7] bg-card
-          ${isSelected ? 'bg-primary/5' : 'bg-card'}`}
+        className="w-52 shrink-0 px-2 py-1.5 flex flex-col gap-1 border-r border-border sticky left-0 z-[7] bg-card"
         style={{ minHeight: 52 }}
       >
         <div className="flex items-center gap-1">
