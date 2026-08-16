@@ -6,7 +6,7 @@ import NotFound from './NotFound';
 describe('NotFound', () => {
   it('renders 404 message and a home link', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <NotFound />
       </MemoryRouter>,
     );
@@ -18,7 +18,7 @@ describe('NotFound', () => {
   it('logs a 404 error to console', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     render(
-      <MemoryRouter initialEntries={['/nope']}>
+      <MemoryRouter initialEntries={['/nope']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <NotFound />
       </MemoryRouter>,
     );
