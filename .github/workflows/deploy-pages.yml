@@ -36,10 +36,20 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Build Storybook
+        run: npm run build-storybook
+
+      - name: Stage app + Storybook for Pages
+        run: |
+          # The app deploys to the site root; Storybook goes under /storybook/.
+          mkdir -p _site/storybook
+          cp -r dist/. _site/
+          cp -r storybook-static/. _site/storybook/
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: _site
 
   deploy:
     name: Deploy

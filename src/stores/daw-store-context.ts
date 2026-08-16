@@ -65,7 +65,8 @@ export interface DAWState extends DAWProject {
   currentStep: number;
   selectedTrackId: string | null;
   selectedClipId: string | null;
-  activePanel: 'drums' | 'synth' | 'samples';
+  /** Whether the master output is muted. */
+  masterMuted: boolean;
   /** User preference: whether autosave is enabled. Persisted separately. */
   autosaveEnabled: boolean;
   /** User preference: autosave interval in seconds (1..3600). Persisted separately. */
@@ -98,7 +99,7 @@ export const initialState: DAWState = {
   currentStep: -1,
   selectedTrackId: 'track-1',
   selectedClipId: null,
-  activePanel: 'drums',
+  masterMuted: false,
   autosaveEnabled: true,
   autosaveIntervalSeconds: 5,
 };
@@ -106,6 +107,7 @@ export const initialState: DAWState = {
 export type Action =
   | { type: 'SET_BPM'; bpm: number }
   | { type: 'SET_MASTER_VOLUME'; volume: number }
+  | { type: 'SET_MASTER_MUTED'; muted: boolean }
   | { type: 'SET_PROJECT_NAME'; name: string }
   | { type: 'SET_PLAYING'; playing: boolean }
   | { type: 'SET_CURRENT_STEP'; step: number }
@@ -130,7 +132,6 @@ export type Action =
   | { type: 'MOVE_CLIP'; fromTrackId: string; toTrackId: string; clipId: string; startBeat: number }
   | { type: 'RESIZE_CLIP'; trackId: string; clipId: string; durationBeats: number }
   | { type: 'DUPLICATE_CLIP'; trackId: string; clipId: string }
-  | { type: 'SET_ACTIVE_PANEL'; panel: 'drums' | 'synth' | 'samples' }
   | { type: 'SELECT_TRACK'; trackId: string }
   | { type: 'LOAD_PROJECT'; project: DAWProject }
   | { type: 'RESET_PROJECT' }
@@ -143,6 +144,8 @@ export function reducer(state: DAWState, action: Action): DAWState {
       return { ...state, bpm: action.bpm };
     case 'SET_MASTER_VOLUME':
       return { ...state, masterVolume: action.volume };
+    case 'SET_MASTER_MUTED':
+      return { ...state, masterMuted: action.muted };
     case 'SET_PROJECT_NAME':
       return { ...state, projectName: action.name };
     case 'SET_PLAYING':
@@ -381,8 +384,6 @@ export function reducer(state: DAWState, action: Action): DAWState {
         ),
       };
     }
-    case 'SET_ACTIVE_PANEL':
-      return { ...state, activePanel: action.panel };
     case 'SELECT_TRACK': {
       const track = state.tracks.find(t => t.id === action.trackId);
       return {

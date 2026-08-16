@@ -37,7 +37,10 @@ describe('Index', () => {
 
   it('can switch panels via the sidebar', () => {
     renderIndex();
-    fireEvent.click(screen.getAllByText('Synth')[0]);
-    expect(screen.getByText('Synthesizer coming soon')).toBeInTheDocument();
+    // The app's sidebar is composable: only Drums + Samples tabs are provided.
+    // The Synth tab is omitted until the synth is implemented.
+    expect(screen.queryByText('Synth')).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByText('Samples')[0]);
+    expect(screen.getByText('Sample Library')).toBeInTheDocument();
   });
 });

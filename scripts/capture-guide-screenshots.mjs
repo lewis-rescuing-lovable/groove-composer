@@ -157,10 +157,8 @@ await highlight(page.locator('div[class*="w-56"]').getByText("Sample Library"), 
 await page.locator('div[class*="w-56"]').first().screenshot({ path: path.join(OUT_DIR, "sidebar-samples.png") });
 await clearHighlights();
 
-// ── 4. Sidebar — Synth panel ──────────────────────────────────
-await page.locator('button:has-text("Synth")').first().click();
-await page.waitForTimeout(300);
-await page.locator('div[class*="w-56"]').first().screenshot({ path: path.join(OUT_DIR, "sidebar-synth.png") });
+// ── 4. (Synth panel omitted — the app's sidebar is composable and the Synth
+//        tab is not provided until the synthesizer is implemented.) ─────────
 
 // Back to Drums for the timeline/editor shots.
 await page.locator('button:has-text("Drums")').first().click();

@@ -36,6 +36,15 @@ describe('daw-store reducer', () => {
     expect(result.current.state.masterVolume).toBe(0.5);
   });
 
+  it('sets master mute with SET_MASTER_MUTED', () => {
+    const { result } = renderDAW();
+    expect(result.current.state.masterMuted).toBe(false);
+    act(() => result.current.dispatch({ type: 'SET_MASTER_MUTED', muted: true }));
+    expect(result.current.state.masterMuted).toBe(true);
+    act(() => result.current.dispatch({ type: 'SET_MASTER_MUTED', muted: false }));
+    expect(result.current.state.masterMuted).toBe(false);
+  });
+
   it('sets project name with SET_PROJECT_NAME', () => {
     const { result } = renderDAW();
     act(() => result.current.dispatch({ type: 'SET_PROJECT_NAME', name: 'Groove 1' }));
@@ -260,12 +269,6 @@ describe('daw-store reducer', () => {
     const dup = result.current.state.tracks[0].clips[2];
     expect(dup.startBeat).toBe(4);
     expect(dup.id).not.toBe('clip-1');
-  });
-
-  it('sets active panel with SET_ACTIVE_PANEL', () => {
-    const { result } = renderDAW();
-    act(() => result.current.dispatch({ type: 'SET_ACTIVE_PANEL', panel: 'synth' }));
-    expect(result.current.state.activePanel).toBe('synth');
   });
 
   it('selects a track with SELECT_TRACK', () => {

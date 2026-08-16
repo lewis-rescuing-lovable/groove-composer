@@ -17,6 +17,8 @@ class AudioEngine {
   private isPlaying = false;
   private bpm = 120;
   private loopEnabled = true;
+  private masterMuted = false;
+  private lastMasterVolume = 0.8;
   private onStepCallback: ((step: number) => void) | null = null;
   private onEndedCallback: (() => void) | null = null;
   private trackInfos: TrackPlaybackInfo[] = [];
@@ -44,7 +46,9 @@ class AudioEngine {
     if (this.ctx) return;
     this.ctx = new AudioContext();
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 0.8;
+    // Respect the last-known volume and mute state (init may run after the
+    // provider has already set these, e.g. when play() is called later).
+    this.masterGain.gain.value = this.masterMuted ? 0 : this.lastMasterVolume;
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = 256;
     this.masterGain.connect(this.analyser);
@@ -53,7 +57,14 @@ class AudioEngine {
   }
 
   setMasterVolume(v: number) {
-    if (this.masterGain) this.masterGain.gain.value = v;
+    this.lastMasterVolume = v;
+    if (this.masterGain) this.masterGain.gain.value = this.masterMuted ? 0 : v;
+  }
+
+  /** Mute/unmute the master output. When muted, the master gain is 0. */
+  setMasterMuted(muted: boolean) {
+    this.masterMuted = muted;
+    if (this.masterGain) this.masterGain.gain.value = muted ? 0 : this.lastMasterVolume;
   }
 
   setBpm(bpm: number) { this.bpm = bpm; }

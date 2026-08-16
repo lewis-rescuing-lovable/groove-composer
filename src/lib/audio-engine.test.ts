@@ -160,6 +160,46 @@ describe('AudioEngine', () => {
       audioEngine.setLoopEnabled(false);
       expect(audioEngine.playing).toBe(false);
     });
+
+    it('mutes and unmutes the master output', () => {
+      const createdGains: MockGainNode[] = [];
+      const origCreateGain = MockAudioContext.prototype.createGain;
+      MockAudioContext.prototype.createGain = function () {
+        const g = origCreateGain.call(this) as MockGainNode;
+        createdGains.push(g);
+        return g;
+      };
+      audioEngine.init();
+      const masterGain = createdGains[0];
+      audioEngine.setMasterVolume(0.4);
+      expect(masterGain.gain.value).toBe(0.4);
+      // Mute -> gain 0
+      audioEngine.setMasterMuted(true);
+      expect(masterGain.gain.value).toBe(0);
+      // Unmute -> restores last volume
+      audioEngine.setMasterMuted(false);
+      expect(masterGain.gain.value).toBe(0.4);
+      MockAudioContext.prototype.createGain = origCreateGain;
+      audioEngine.dispose();
+    });
+
+    it('init respects a pre-set mute state', () => {
+      // Set mute BEFORE the context exists, then init — the gain must start at 0.
+      audioEngine.setMasterMuted(true);
+      audioEngine.setMasterVolume(0.6);
+      const createdGains: MockGainNode[] = [];
+      const origCreateGain = MockAudioContext.prototype.createGain;
+      MockAudioContext.prototype.createGain = function () {
+        const g = origCreateGain.call(this) as MockGainNode;
+        createdGains.push(g);
+        return g;
+      };
+      audioEngine.init();
+      const masterGain = createdGains[0];
+      expect(masterGain.gain.value).toBe(0);
+      MockAudioContext.prototype.createGain = origCreateGain;
+      audioEngine.dispose();
+    });
   });
 
   describe('setTracks', () => {

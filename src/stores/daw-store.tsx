@@ -8,9 +8,18 @@ import {
   loadPrefsFromStorage, savePrefsToStorage,
 } from './daw-store-context';
 
-export function DAWProvider({ children }: { children: React.ReactNode }) {
-  // Hydrate from localStorage on first render (client-side).
-  const [state, dispatch] = useReducer(reducer, initialState, (base) => {
+export function DAWProvider({
+  children,
+  initialState: initialOverride,
+}: {
+  children: React.ReactNode;
+  /** Optional custom initial state (e.g. for Storybook stories). When provided, localStorage hydration is skipped. */
+  initialState?: DAWState;
+}) {
+  // Hydrate from localStorage on first render (client-side), unless a custom
+  // initial state is supplied (e.g. by a Storybook story).
+  const [state, dispatch] = useReducer(reducer, initialOverride ?? initialState, (base) => {
+    if (initialOverride) return base;
     const saved = loadFromStorage();
     const prefs = loadPrefsFromStorage();
     return {
@@ -79,6 +88,10 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
     audioEngine.setMasterVolume(state.masterVolume);
   }, [state.masterVolume]);
 
+  useEffect(() => {
+    audioEngine.setMasterMuted(state.masterMuted);
+  }, [state.masterMuted]);
+
   // Sync all tracks and patterns to the audio engine
   useEffect(() => {
     audioEngine.setTracks(state.tracks, state.drumPatterns);
@@ -105,6 +118,12 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
 
   const play = useCallback(() => {
     audioEngine.init();
+    // Re-apply the current volume + mute state at play time. The audio engine
+    // is a module-level singleton that may already have a context (e.g. across
+    // Storybook stories), so init() alone won't reset the gain — we must push
+    // the current state explicitly to guarantee playback starts correctly.
+    audioEngine.setMasterVolume(stateRef.current.masterVolume);
+    audioEngine.setMasterMuted(stateRef.current.masterMuted);
     audioEngine.setTracks(stateRef.current.tracks, stateRef.current.drumPatterns);
     audioEngine.play();
     dispatch({ type: 'SET_PLAYING', playing: true });
