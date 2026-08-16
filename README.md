@@ -55,8 +55,7 @@ Open http://localhost:8080 to view the app in your browser.
 | `npm run build`             | Create a production build in `dist/`              |
 | `npm run preview`           | Preview the production build locally              |
 | `npm run lint`              | Run ESLint                                        |
-| `npm run typecheck`         | Run TypeScript type checking                      |
-| `npm run test`              | Run unit tests once (Vitest)                      |
+| `npm run typecheck`         | Run TypeScript type checking                      || `npm run knip`              | Find dead code (unused files, exports, deps)      || `npm run test`              | Run unit tests once (Vitest)                      |
 | `npm run test:watch`        | Run unit tests in watch mode                      |
 | `npm run test:coverage`     | Run unit tests with coverage report               |
 | `npm run test:e2e`          | Run Playwright E2E tests (dev server auto-starts) |
@@ -135,16 +134,21 @@ This repository follows a simple GitHub Flow:
 1. Create a feature branch from `main`.
 2. Make your changes, commit, and push.
 3. Open a Pull Request (a template is provided).
-4. CI (lint, typecheck, tests, build) runs automatically on every PR.
+4. CI (lint, typecheck, tests, coverage, E2E, build) runs automatically on every PR.
 5. Merge to `main` — the app is deployed to GitHub Pages automatically.
 
 ## ✅ Quality Checks
 
-CI runs the following on every push and pull request:
+CI (`.github/workflows/ci.yml`) runs the following on every push and pull request:
 
 - `npm run lint` — ESLint
 - `npm run typecheck` — TypeScript type checking
 - `npm run test` — Vitest unit tests
+- `npm run knip` — dead-code detection
+- `npm run test:coverage` — unit tests with coverage; a coverage report is posted
+  as a PR comment for reviewers
+- `npm run test:e2e` — Playwright E2E against the dev server
+- `npm run test:e2e:build` — Playwright E2E against the production build
 - `npm run build` — production build
 
 You can run these locally before pushing to keep CI green.

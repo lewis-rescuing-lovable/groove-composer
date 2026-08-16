@@ -15,7 +15,7 @@ export default defineConfig({
     teardownTimeout: 10000,
     coverage: {
       provider: "v8",
-      reporter: ["text", "json-summary", "html"],
+      reporter: ["text", "json-summary", "json", "html"],
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "src/main.tsx",

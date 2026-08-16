@@ -9,6 +9,7 @@
     "build:dev": "npx vite build --mode development",
     "lint": "npx eslint .",
     "typecheck": "npx tsc --build",
+    "knip": "npx knip",
     "preview": "npx vite preview",
     "test": "npx vitest run",
     "test:watch": "npx vitest",
