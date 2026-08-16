@@ -29,35 +29,40 @@ export function Timeline() {
         </div>
       )}
 
-      {/* Timeline header */}
-      <div className="flex border-b border-border shrink-0">
-        <div className="w-52 shrink-0 px-3 py-1.5 flex items-center justify-between border-r border-border">
-          <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Tracks</span>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={addTrack}>
-            <Plus className="h-3 w-3" />
-          </Button>
-        </div>
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex" style={{ width: BEATS_TO_SHOW * BEAT_WIDTH }}>
-            {Array.from({ length: BEATS_TO_SHOW }, (_, i) => (
-              <div
-                key={i}
-                className={`text-[10px] font-mono py-1.5 border-r
-                  ${i % 4 === 0 ? 'text-muted-foreground border-daw-grid-line-strong' : 'text-muted-foreground/30 border-daw-grid-line'}`}
-                style={{ width: BEAT_WIDTH }}
-              >
-                <span className="pl-1">{Math.floor(i / 4) + 1}.{(i % 4) + 1}</span>
+      {/* Body: single vertical scroll; ruler + all lanes share one horizontal scroll */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="overflow-x-auto">
+          <div style={{ width: BEATS_TO_SHOW * BEAT_WIDTH + 208 }}>
+            {/* Ruler row (sticky top, scrolls horizontally with the grid) */}
+            <div className="sticky top-0 z-10 flex border-b border-border bg-background">
+              <div className="w-52 shrink-0 px-3 py-1.5 flex items-center justify-between border-r border-border">
+                <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Tracks</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={addTrack}>
+                  <Plus className="h-3 w-3" />
+                </Button>
               </div>
+              <div className="flex-1">
+                <div className="flex" style={{ width: BEATS_TO_SHOW * BEAT_WIDTH }}>
+                  {Array.from({ length: BEATS_TO_SHOW }, (_, i) => (
+                    <div
+                      key={i}
+                      className={`text-[10px] font-mono py-1.5 border-r
+                        ${i % 4 === 0 ? 'text-muted-foreground border-daw-grid-line-strong' : 'text-muted-foreground/30 border-daw-grid-line'}`}
+                      style={{ width: BEAT_WIDTH }}
+                    >
+                      <span className="pl-1">{Math.floor(i / 4) + 1}.{(i % 4) + 1}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Track lanes */}
+            {state.tracks.map(track => (
+              <TrackLane key={track.id} track={track} />
             ))}
           </div>
         </div>
-      </div>
-
-      {/* Track lanes */}
-      <div className="flex-1 overflow-y-auto">
-        {state.tracks.map(track => (
-          <TrackLane key={track.id} track={track} />
-        ))}
         {state.tracks.length === 0 && (
           <div className="flex items-center justify-center h-32 text-muted-foreground text-sm font-mono">
             Click + to add a track
@@ -68,7 +73,7 @@ export function Timeline() {
   );
 }
 
-// ─── Track Lane ───────────────────────────────────────────────
+// ─── Track Lane (controls sticky-left + grid row, shares horizontal scroll) ──
 function TrackLane({ track }: { track: TrackType }) {
   const { state, dispatch } = useDAW();
   const isSelected = state.selectedTrackId === track.id;
@@ -99,8 +104,12 @@ function TrackLane({ track }: { track: TrackType }) {
       className={`flex border-b border-border group ${isSelected ? 'ring-1 ring-inset ring-primary/50' : ''}`}
       onClick={() => dispatch({ type: 'SELECT_TRACK', trackId: track.id })}
     >
-      {/* Track controls */}
-      <div className={`w-52 shrink-0 px-2 py-1.5 flex flex-col gap-1 border-r border-border ${isSelected ? 'bg-primary/5' : 'bg-card'}`}>
+      {/* Track controls (sticky so they stay put while the grid scrolls) */}
+      <div
+        className={`w-52 shrink-0 px-2 py-1.5 flex flex-col gap-1 border-r border-border sticky left-0 z-[7] bg-card
+          ${isSelected ? 'bg-primary/5' : 'bg-card'}`}
+        style={{ minHeight: 52 }}
+      >
         <div className="flex items-center gap-1">
           <input
             value={track.name}
@@ -137,10 +146,10 @@ function TrackLane({ track }: { track: TrackType }) {
         </div>
       </div>
 
-      {/* Clip area */}
+      {/* Clip area (scrolls with the shared grid) */}
       <div
         ref={laneRef}
-        className="flex-1 relative overflow-x-auto cursor-default"
+        className="flex-1 relative cursor-default"
         style={{ minHeight: 52 }}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
