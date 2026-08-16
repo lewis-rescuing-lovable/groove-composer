@@ -8,17 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { ConfirmDialog } from '@/components/daw/ConfirmDialog';
 import { formatAutosaveInterval, parseAutosaveInterval } from '@/lib/autosave-time';
 
 export function TopBar() {
@@ -127,8 +117,14 @@ export function TopBar() {
         >
           <Save className="h-4 w-4" />
         </Button>
-        <AlertDialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
-          <AlertDialogTrigger asChild>
+        <ConfirmDialog
+          open={loadDialogOpen}
+          onOpenChange={setLoadDialogOpen}
+          title="Load saved project?"
+          description="This replaces the current project with the one saved in browser storage. Any unsaved changes will be lost."
+          confirmLabel="Load"
+          onConfirm={handleLoad}
+          trigger={
             <Button
               variant="ghost" size="icon" onClick={handleLoadClick}
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
@@ -137,21 +133,8 @@ export function TopBar() {
             >
               <FolderOpen className="h-4 w-4" />
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Load saved project?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This replaces the current project with the one saved in browser
-                storage. Any unsaved changes will be lost.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleLoad}>Load</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          }
+        />
         <Button
           variant="ghost" size="icon" onClick={handleShare}
           className="h-8 w-8 text-muted-foreground hover:text-foreground"
@@ -160,8 +143,13 @@ export function TopBar() {
         >
           <Share2 className="h-4 w-4" />
         </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
+        <ConfirmDialog
+          title="Reset project?"
+          description="This resets the loaded project to the defaults. Your saved project in browser storage is left untouched."
+          confirmLabel="Reset"
+          confirmVariant="destructive"
+          onConfirm={resetProject}
+          trigger={
             <Button
               variant="ghost" size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-destructive"
@@ -170,21 +158,8 @@ export function TopBar() {
             >
               <RotateCcw className="h-4 w-4" />
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reset project?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This resets the loaded project to the defaults. Your saved project in
-                browser storage is left untouched.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={resetProject}>Reset</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          }
+        />
       </div>
 
       {/* Master Volume */}
