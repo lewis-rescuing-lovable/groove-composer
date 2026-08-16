@@ -92,6 +92,12 @@ export function SynthEditor() {
   const clipStartStep = (activeClip?.startBeat ?? 0) * 4;
   const clipEndStep = clipStartStep + (activeClip?.durationBeats ?? steps / 4) * 4;
 
+  // The current step relative to the clip, or -1 when not playing / outside the clip.
+  const localCurrentStep =
+    state.isPlaying && state.currentStep >= clipStartStep && state.currentStep < clipEndStep
+      ? (state.currentStep - clipStartStep) % steps
+      : -1;
+
   // Virtualize horizontally: only render steps within [startStep, endStep).
   const totalW = steps * CELL_W;
   const startStep = Math.max(0, Math.floor(scrollLeft / CELL_W));
@@ -176,22 +182,25 @@ export function SynthEditor() {
             <div className="absolute top-4" style={{ transform: `translateX(${startStep * CELL_W}px)` }}>
               {pitches.map(({ midi }) => (
                 <div key={midi} className="flex" style={{ height: ROW_H }}>
-                  {visibleSteps.map(step => (
-                    <NoteCell
-                      key={step}
-                      step={step}
-                      pitch={midi}
-                      isActive={pattern.notes.some(n => n.pitch === midi && n.startStep === step)}
-                      isCurrentStep={
-                        state.isPlaying
-                        && state.currentStep >= clipStartStep
-                        && state.currentStep < clipEndStep
-                        && (state.currentStep - clipStartStep) % steps === step
-                      }
-                      onToggle={toggleNote}
-                      patternId={pattern.id}
-                    />
-                  ))}
+                  {visibleSteps.map(step => {
+                    const note = pattern.notes.find(n => n.pitch === midi && n.startStep === step);
+                    return (
+                      <NoteCell
+                        key={step}
+                        step={step}
+                        pitch={midi}
+                        isActive={!!note}
+                        isPlayheadStep={localCurrentStep === step}
+                        isNoteSounding={
+                          !!note
+                          && localCurrentStep >= note.startStep
+                          && localCurrentStep < note.startStep + note.duration
+                        }
+                        onToggle={toggleNote}
+                        patternId={pattern.id}
+                      />
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -204,12 +213,13 @@ export function SynthEditor() {
 
 // ─── Memoized note cell ───────────────────────────────────────
 const NoteCell = memo(function NoteCell({
-  step, pitch, isActive, isCurrentStep, onToggle, patternId,
+  step, pitch, isActive, isPlayheadStep, isNoteSounding, onToggle, patternId,
 }: {
   step: number;
   pitch: number;
   isActive: boolean;
-  isCurrentStep: boolean;
+  isPlayheadStep: boolean;
+  isNoteSounding: boolean;
   onToggle: (patternId: string, pitch: number, step: number) => void;
   patternId: string;
 }) {
@@ -220,10 +230,10 @@ const NoteCell = memo(function NoteCell({
       onClick={() => onToggle(patternId, pitch, step)}
       className={`shrink-0 rounded-sm transition-all duration-75 border
         ${isActive
-          ? isCurrentStep
+          ? isNoteSounding
             ? 'bg-accent border-accent shadow-[0_0_8px_hsl(var(--accent)/0.5)]'
             : 'bg-daw-clip-synth border-daw-clip-synth shadow-[0_0_8px_hsl(var(--daw-clip-synth)/0.4)]'
-          : isCurrentStep
+          : isPlayheadStep
             ? 'bg-daw-step-hover border-daw-grid-line-strong'
             : isBeatStart
               ? 'bg-muted border-daw-grid-line-strong hover:bg-daw-step-hover'
