@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
-import { DAWProvider, useDAW, getActivePatternId, serializeProject, deserializeProject } from './daw-store';
+import { DAWProvider } from './daw-store';
+import { useDAW, getActivePatternId, serializeProject, deserializeProject } from './daw-store-context';
 import { createEmptyDrumGrid } from '@/lib/types';
 
 // We can't import the reducer directly; drive it through the provider.

@@ -1,4 +1,4 @@
-import { useDAW } from '@/stores/daw-store';
+import { useDAW } from '@/stores/daw-store-context';
 import { Track as TrackType, Clip } from '@/lib/types';
 import { Plus, Trash2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';

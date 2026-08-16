@@ -65,6 +65,42 @@ Open http://localhost:8080 to view the app in your browser.
 | `npm run test:e2e:build`    | Build, then run E2E against the production build  |
 | `npm run test:e2e:build:debug` | Build, then debug E2E against production build |
 
+## 🔒 Pre-commit hooks
+
+The project uses [pre-commit](https://pre-commit.com/) to run the full quality
+suite (lint, typecheck, unit tests, build, E2E, knip, coverage) before every
+commit. It is a Python tool installed **outside** the project — it is **not** an
+npm dependency.
+
+### Install (one-time, per machine)
+
+```sh
+uv tool install pre-commit   # installs the `pre-commit` command
+pre-commit install           # wires it into this repo's git hooks
+```
+
+> Requires [uv](https://docs.astral.sh/uv/). If you don't use uv, `brew install
+> pre-commit` or `pipx install pre-commit` work too.
+
+### Usage
+
+- Hooks run automatically on `git commit`. If any check fails, the commit is
+  blocked until you fix the issue and re-stage.
+- Run the hooks manually without committing:
+
+  ```sh
+  pre-commit run --all-files
+  ```
+
+- Skip the hooks for a single commit (e.g. a WIP commit):
+
+  ```sh
+  git commit --no-verify
+  # or: SKIP=lint,typecheck,test,build,test:e2e,test:e2e:build,knip,test:coverage git commit
+  ```
+
+The hook definitions live in [`.pre-commit-config.yaml`](.pre-commit-config.yaml).
+
 ## 🧪 Testing
 
 ### Unit tests (Vitest + Testing Library)

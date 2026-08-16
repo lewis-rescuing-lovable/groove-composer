@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { audioEngine } from '@/lib/audio-engine';
-import { useDAW } from '@/stores/daw-store';
+import { useDAW } from '@/stores/daw-store-context';
 
 export function SpectrumAnalyzer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);

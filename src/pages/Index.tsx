@@ -1,4 +1,5 @@
-import { DAWProvider, useDAW } from '@/stores/daw-store';
+import { DAWProvider } from '@/stores/daw-store';
+import { useDAW } from '@/stores/daw-store-context';
 import { TopBar } from '@/components/daw/TopBar';
 import { InstrumentSidebar } from '@/components/daw/InstrumentSidebar';
 import { Timeline } from '@/components/daw/Timeline';
