@@ -12,11 +12,11 @@ test.describe("groove-composer DAW", () => {
   });
 
   test("loads the DAW with default project", async ({ page }) => {
-    await expect(page.locator('input[value="Untitled Project"]')).toBeVisible();
+    await expect(page.locator('input[value="Starter Project"]')).toBeVisible();
     await expect(page.getByText("Tracks")).toBeVisible();
-    // Default drum track + pattern
+    // Default drum track + patterns
     await expect(page.locator('input[value="Drums"]')).toBeVisible();
-    await expect(page.getByText("Pattern 1", { exact: true })).toBeVisible();
+    await expect(page.getByText("Clap & Cymbal", { exact: true })).toBeVisible();
     // Spectrum canvas present
     await expect(page.locator("canvas")).toBeVisible();
   });
@@ -26,9 +26,9 @@ test.describe("groove-composer DAW", () => {
     const tracksHeader = page.getByText("Tracks");
     const addTrack = tracksHeader.locator("xpath=..").locator("button");
     await addTrack.click();
-    await expect(page.locator('input[value="Track 2"]')).toBeVisible();
+    await expect(page.locator('input[value="Track 3"]')).toBeVisible();
     // New track has its own pattern
-    await expect(page.getByText("Pattern 2", { exact: true })).toBeVisible();
+    await expect(page.getByText("Pattern 3", { exact: true })).toBeVisible();
   });
 
   test("renames a track", async ({ page }) => {
@@ -52,7 +52,7 @@ test.describe("groove-composer DAW", () => {
     const patternsHeader = page.getByText("Patterns");
     const addPattern = patternsHeader.locator("xpath=..").locator("button");
     await addPattern.click();
-    await expect(page.getByText("Pattern 2")).toBeVisible();
+    await expect(page.getByText("Pattern 3")).toBeVisible();
   });
 
   test("switches between synth and samples panels", async ({ page }) => {
@@ -86,26 +86,27 @@ test.describe("groove-composer DAW", () => {
   });
 
   test("duplicate a clip", async ({ page }) => {
-    // Select the drum clip first (click on the clip block)
-    // The clip block shows a drum emoji 🥁
+    // Select the first drum clip (click on the clip block, shown with a drum emoji 🥁)
     const clip = page.getByText("🥁").first();
+    const before = await page.getByText("🥁").count();
     await clip.click();
     // Duplicate button appears on selected clip
     const duplicate = page.locator("button:has(svg.lucide-copy)");
     await expect(duplicate).toBeVisible();
     await duplicate.click();
-    // Duplicating creates a new clip (two drum emojis on the same lane)
-    await expect(page.getByText("🥁")).toHaveCount(2);
+    // Duplicating creates a new clip (one more drum emoji)
+    await expect(page.getByText("🥁")).toHaveCount(before + 1);
   });
 
   test("renames a pattern from the sidebar", async ({ page }) => {
     // Pencil button for the default pattern
-    const rename = page.getByRole("button", { name: "Rename Pattern 1" });
+    const rename = page.getByRole("button", { name: "Rename Drums" });
     await rename.click();
     const input = page.getByTestId("pattern-name-input-default-pattern");
     await input.fill("Main Groove");
     await input.press("Enter");
-    await expect(page.getByText("Main Groove", { exact: true })).toBeVisible();
+    // The pattern name renders together with its step count, e.g. "Main Groove(16)"
+    await expect(page.getByText(/Main Groove/)).toBeVisible();
   });
 
   test("renames a pattern from the sequencer", async ({ page }) => {
@@ -119,7 +120,7 @@ test.describe("groove-composer DAW", () => {
 
   test("saves, reloads, and resets a project", async ({ page }) => {
     // Rename the project so we can detect persistence
-    const projectName = page.locator('input[value="Untitled Project"]');
+    const projectName = page.locator('input[value="Starter Project"]');
     await projectName.fill("Persisted Groove");
 
     // Save explicitly, then reload the page (fresh session)
@@ -129,6 +130,6 @@ test.describe("groove-composer DAW", () => {
 
     // Reset returns to defaults
     await page.getByRole("button", { name: "Reset project" }).click();
-    await expect(page.locator('input[value="Untitled Project"]')).toBeVisible();
+    await expect(page.locator('input[value="Starter Project"]')).toBeVisible();
   });
 });

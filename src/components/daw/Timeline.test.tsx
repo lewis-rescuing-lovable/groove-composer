@@ -25,7 +25,7 @@ describe('Timeline', () => {
     const buttons = screen.getAllByRole('button');
     // The + button is the first button in the timeline header
     fireEvent.click(buttons[0]);
-    expect(screen.getByDisplayValue('Track 2')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Track 3')).toBeInTheDocument();
   });
 
   it('renames a track', () => {
@@ -47,11 +47,13 @@ describe('Timeline', () => {
 
   it('shows empty state when no tracks remain', () => {
     renderTimeline();
-    // Remove the only track via its delete button (a Trash2 icon: svg.lucide-trash2)
-    const trash = screen
+    // Remove both default tracks via their delete buttons (a Trash2 icon: svg.lucide-trash2)
+    const trashButtons = screen
       .getAllByRole('button')
-      .find(b => b.querySelector('svg.lucide-trash2'));
-    fireEvent.click(trash!);
+      .filter(b => b.querySelector('svg.lucide-trash2'));
+    for (const trash of trashButtons) {
+      fireEvent.click(trash);
+    }
     expect(screen.getByText('Click + to add a track')).toBeInTheDocument();
   });
 });

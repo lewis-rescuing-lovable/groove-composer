@@ -19,7 +19,7 @@ describe('StepSequencer', () => {
 
   it('renders pattern name and step controls', () => {
     renderSequencer();
-    expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+    expect(screen.getByText('Clap & Cymbal')).toBeInTheDocument();
     expect(screen.getByText('16')).toBeInTheDocument();
     expect(screen.getByText('32')).toBeInTheDocument();
   });
@@ -52,7 +52,7 @@ describe('StepSequencer', () => {
     // Render sequencer, then remove the clip by... simpler: create a provider state with no pattern.
     // We'll render Index-like scenario later; here just verify default renders.
     renderSequencer();
-    expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+    expect(screen.getByText('Clap & Cymbal')).toBeInTheDocument();
   });
 
   it('renames the pattern via the sequencer name control', () => {
@@ -60,7 +60,7 @@ describe('StepSequencer', () => {
     const rename = screen.getByRole('button', { name: 'Rename pattern' });
     fireEvent.click(rename);
     const input = screen.getByTestId('pattern-name-input');
-    expect(input).toHaveValue('Pattern 1');
+    expect(input).toHaveValue('Clap & Cymbal');
     fireEvent.change(input, { target: { value: 'Groove A' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(screen.getByText('Groove A')).toBeInTheDocument();

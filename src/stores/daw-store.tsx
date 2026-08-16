@@ -8,13 +8,25 @@ import { audioEngine } from '@/lib/audio-engine';
 // Default pattern
 const defaultPattern: DrumPattern = {
   id: 'default-pattern',
-  name: 'Pattern 1',
+  name: 'Drums',
   steps: 16,
   grid: (() => {
     const g = createEmptyDrumGrid(16);
     g['kick'][0] = true; g['kick'][4] = true; g['kick'][8] = true; g['kick'][12] = true;
     g['snare'][4] = true; g['snare'][12] = true;
     for (let i = 0; i < 16; i += 2) g['hihat-closed'][i] = true;
+    return g;
+  })(),
+};
+
+const clapCymbalPattern: DrumPattern = {
+  id: '840b8v85',
+  name: 'Clap & Cymbal',
+  steps: 16,
+  grid: (() => {
+    const g = createEmptyDrumGrid(16);
+    g['clap'][8] = true; g['clap'][10] = true; g['clap'][12] = true;
+    g['cymbal'][14] = true;
     return g;
   })(),
 };
@@ -26,12 +38,26 @@ const defaultTrack: Track = {
   pan: 0,
   muted: false,
   solo: false,
+  clips: [
+    { id: 'clip-1', type: 'drum', startBeat: 0, durationBeats: 4, patternId: '840b8v85' },
+    { id: '7hgjpbxs', type: 'drum', startBeat: 4, durationBeats: 4, patternId: 'default-pattern' },
+    { id: 'xqcnm3th', type: 'drum', startBeat: 8, durationBeats: 4, patternId: 'default-pattern' },
+  ],
+};
+
+const secondTrack: Track = {
+  id: '8gebvw0c',
+  name: 'Track 2',
+  volume: 0.8,
+  pan: 0,
+  muted: false,
+  solo: false,
   clips: [{
-    id: 'clip-1',
+    id: 't9owklqf',
     type: 'drum',
-    startBeat: 0,
+    startBeat: 4,
     durationBeats: 4,
-    patternId: 'default-pattern',
+    patternId: '840b8v85',
   }],
 };
 
@@ -55,14 +81,14 @@ function getActivePatternId(state: DAWState): string | null {
 }
 
 const initialState: DAWState = {
-  projectName: 'Untitled Project',
+  projectName: 'Starter Project',
   bpm: 120,
   timeSignature: [4, 4] as [number, number],
-  tracks: [defaultTrack],
-  drumPatterns: [defaultPattern],
+  tracks: [defaultTrack, secondTrack],
+  drumPatterns: [defaultPattern, clapCymbalPattern],
   synthPatterns: [],
   masterVolume: 0.8,
-  loopEnabled: true,
+  loopEnabled: false,
   loopStart: 0,
   loopEnd: 4,
   isPlaying: false,

@@ -12,7 +12,7 @@ describe('Index', () => {
 
   it('renders the full DAW layout', () => {
     renderIndex();
-    expect(screen.getByDisplayValue('Untitled Project')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Starter Project')).toBeInTheDocument();
     expect(screen.getByText('Tracks')).toBeInTheDocument();
     expect(screen.getAllByText('Drums').length).toBeGreaterThan(0);
     expect(screen.getByText('Editor')).toBeInTheDocument();
@@ -21,7 +21,7 @@ describe('Index', () => {
 
   it('renders a pattern and spectrum canvas', () => {
     renderIndex();
-    expect(screen.getAllByText('Pattern 1').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Clap & Cymbal').length).toBeGreaterThan(0);
     expect(document.querySelector('canvas')).toBeInTheDocument();
   });
 
@@ -32,7 +32,7 @@ describe('Index', () => {
     const headerRow = tracksHeader.closest('div')!;
     const addButton = headerRow.querySelector('button')!;
     fireEvent.click(addButton);
-    expect(screen.getByDisplayValue('Track 2')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Track 3')).toBeInTheDocument();
   });
 
   it('can switch panels via the sidebar', () => {

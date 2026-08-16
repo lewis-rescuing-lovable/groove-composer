@@ -69,7 +69,7 @@ export function trackConsoleErrors(page: Page): { errors: string[] } {
 
 // Selectors (keep in one place so UI changes are easy to chase)
 export const selectors = {
-  projectName: 'input[value="Untitled Project"]',
+  projectName: 'input[value="Starter Project"]',
   bpmInput: 'input[type="number"]',
   trackInput: (name: string) => `input[value="${name}"]`,
   addTrackButton: "button:has(svg.lucide-plus)",

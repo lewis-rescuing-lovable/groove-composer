@@ -12,13 +12,13 @@ function renderDAW() {
 describe('daw-store reducer', () => {
   it('initializes with a default drum track and pattern', () => {
     const s = renderDAW().result.current.state;
-    expect(s.projectName).toBe('Untitled Project');
+    expect(s.projectName).toBe('Starter Project');
     expect(s.bpm).toBe(120);
     expect(s.masterVolume).toBe(0.8);
-    expect(s.loopEnabled).toBe(true);
-    expect(s.tracks).toHaveLength(1);
+    expect(s.loopEnabled).toBe(false);
+    expect(s.tracks).toHaveLength(2);
     expect(s.tracks[0].name).toBe('Drums');
-    expect(s.drumPatterns).toHaveLength(1);
+    expect(s.drumPatterns).toHaveLength(2);
     expect(s.selectedTrackId).toBe('track-1');
     expect(s.isPlaying).toBe(false);
   });
@@ -72,13 +72,13 @@ describe('daw-store reducer', () => {
     const { result } = renderDAW();
     const pattern = {
       id: 'p2',
-      name: 'Pattern 2',
+      name: 'Pattern 3',
       steps: 16,
       grid: createEmptyDrumGrid(16),
     };
     act(() => result.current.dispatch({ type: 'ADD_PATTERN', pattern }));
-    expect(result.current.state.drumPatterns).toHaveLength(2);
-    expect(result.current.state.drumPatterns[1].name).toBe('Pattern 2');
+    expect(result.current.state.drumPatterns).toHaveLength(3);
+    expect(result.current.state.drumPatterns[2].name).toBe('Pattern 3');
   });
 
   it('removes an unused pattern with REMOVE_PATTERN but keeps used ones', () => {
@@ -126,23 +126,24 @@ describe('daw-store reducer', () => {
   it('adds a track with a new pattern via ADD_TRACK_WITH_PATTERN', () => {
     const { result } = renderDAW();
     act(() => result.current.dispatch({ type: 'ADD_TRACK_WITH_PATTERN' }));
-    expect(result.current.state.tracks).toHaveLength(2);
-    expect(result.current.state.drumPatterns).toHaveLength(2);
-    const newTrack = result.current.state.tracks[1];
-    expect(newTrack.name).toBe('Track 2');
+    expect(result.current.state.tracks).toHaveLength(3);
+    expect(result.current.state.drumPatterns).toHaveLength(3);
+    const newTrack = result.current.state.tracks[2];
+    expect(newTrack.name).toBe('Track 3');
     expect(result.current.state.selectedTrackId).toBe(newTrack.id);
   });
 
   it('removes a track and orphaned patterns with REMOVE_TRACK', () => {
     const { result } = renderDAW();
-    // Add a second track (creates its own pattern) then remove the default track
+    // Add a track (creates its own pattern) then remove the default track
     act(() => result.current.dispatch({ type: 'ADD_TRACK_WITH_PATTERN' }));
-    const secondId = result.current.state.tracks[1].id;
+    const newTrackId = result.current.state.tracks[2].id;
     act(() => result.current.dispatch({ type: 'REMOVE_TRACK', trackId: 'track-1' }));
-    expect(result.current.state.tracks.map(t => t.id)).toEqual([secondId]);
-    // default-pattern no longer referenced -> removed
+    // default-pattern was only referenced by track-1 -> removed
     expect(result.current.state.drumPatterns.some(p => p.id === 'default-pattern')).toBe(false);
-    expect(result.current.state.selectedTrackId).toBe(secondId);
+    expect(result.current.state.tracks.map(t => t.id)).toEqual(['8gebvw0c', newTrackId]);
+    // selected track stays on the added track (selected by ADD_TRACK_WITH_PATTERN)
+    expect(result.current.state.selectedTrackId).toBe(newTrackId);
   });
 
   it('sets track volume / pan with SET_TRACK_VOLUME and SET_TRACK_PAN', () => {
@@ -182,9 +183,9 @@ describe('daw-store reducer', () => {
         },
       }),
     );
-    expect(result.current.state.tracks[0].clips).toHaveLength(2);
+    expect(result.current.state.tracks[0].clips).toHaveLength(4);
     act(() => result.current.dispatch({ type: 'REMOVE_CLIP', trackId: 'track-1', clipId: 'clip-2' }));
-    expect(result.current.state.tracks[0].clips).toHaveLength(1);
+    expect(result.current.state.tracks[0].clips).toHaveLength(3);
   });
 
   it('selects a clip with SELECT_CLIP', () => {
@@ -220,7 +221,7 @@ describe('daw-store reducer', () => {
         startBeat: 4,
       }),
     );
-    expect(result.current.state.tracks[0].clips).toHaveLength(0);
+    expect(result.current.state.tracks[0].clips).toHaveLength(2);
     expect(result.current.state.tracks[1].clips).toHaveLength(2);
     expect(result.current.state.tracks[1].clips.find(c => c.id === 'clip-1')?.startBeat).toBe(4);
     expect(result.current.state.selectedTrackId).toBe(targetId);
@@ -241,8 +242,8 @@ describe('daw-store reducer', () => {
   it('duplicates a clip with DUPLICATE_CLIP', () => {
     const { result } = renderDAW();
     act(() => result.current.dispatch({ type: 'DUPLICATE_CLIP', trackId: 'track-1', clipId: 'clip-1' }));
-    expect(result.current.state.tracks[0].clips).toHaveLength(2);
-    const dup = result.current.state.tracks[0].clips[1];
+    expect(result.current.state.tracks[0].clips).toHaveLength(4);
+    const dup = result.current.state.tracks[0].clips[3];
     expect(dup.startBeat).toBe(4);
     expect(dup.id).not.toBe('clip-1');
   });
@@ -308,7 +309,7 @@ describe('getActivePatternId', () => {
       selectedTrackId: 'track-1',
       selectedClipId: 'clip-1',
     });
-    expect(getActivePatternId(s)).toBe('default-pattern');
+    expect(getActivePatternId(s)).toBe('840b8v85');
   });
 });
 
@@ -325,13 +326,14 @@ describe('pattern renaming', () => {
     act(() =>
       result.current.dispatch({
         type: 'ADD_PATTERN',
-        pattern: { id: 'p2', name: 'Pattern 2', steps: 16, grid: createEmptyDrumGrid(16) },
+        pattern: { id: 'p2', name: 'Pattern 3', steps: 16, grid: createEmptyDrumGrid(16) },
       }),
     );
     const firstId = result.current.state.drumPatterns[0].id;
     act(() => result.current.dispatch({ type: 'RENAME_PATTERN', patternId: firstId, name: 'Renamed' }));
     expect(result.current.state.drumPatterns[0].name).toBe('Renamed');
-    expect(result.current.state.drumPatterns[1].name).toBe('Pattern 2');
+    expect(result.current.state.drumPatterns[1].name).toBe('Clap & Cymbal');
+    expect(result.current.state.drumPatterns[2].name).toBe('Pattern 3');
   });
 });
 
@@ -341,12 +343,12 @@ describe('reset project', () => {
     act(() => result.current.dispatch({ type: 'SET_PROJECT_NAME', name: 'My Groove' }));
     act(() => result.current.dispatch({ type: 'SET_BPM', bpm: 140 }));
     act(() => result.current.dispatch({ type: 'ADD_TRACK_WITH_PATTERN' }));
-    expect(result.current.state.tracks).toHaveLength(2);
+    expect(result.current.state.tracks).toHaveLength(3);
 
     act(() => result.current.dispatch({ type: 'RESET_PROJECT' }));
-    expect(result.current.state.projectName).toBe('Untitled Project');
+    expect(result.current.state.projectName).toBe('Starter Project');
     expect(result.current.state.bpm).toBe(120);
-    expect(result.current.state.tracks).toHaveLength(1);
+    expect(result.current.state.tracks).toHaveLength(2);
     expect(result.current.state.tracks[0].name).toBe('Drums');
     expect(result.current.state.isPlaying).toBe(false);
   });
@@ -361,7 +363,7 @@ describe('persistence', () => {
     const { result } = renderDAW();
     const raw = serializeProject(result.current.state);
     const parsed = JSON.parse(raw);
-    expect(parsed.projectName).toBe('Untitled Project');
+    expect(parsed.projectName).toBe('Starter Project');
     expect(parsed.bpm).toBe(120);
     expect(Array.isArray(parsed.tracks)).toBe(true);
     expect(Array.isArray(parsed.drumPatterns)).toBe(true);
@@ -375,9 +377,9 @@ describe('persistence', () => {
     const raw = serializeProject(result.current.state);
     const project = deserializeProject(raw);
     expect(project).not.toBeNull();
-    expect(project!.projectName).toBe('Untitled Project');
+    expect(project!.projectName).toBe('Starter Project');
     expect(project!.bpm).toBe(120);
-    expect(project!.tracks).toHaveLength(1);
+    expect(project!.tracks).toHaveLength(2);
   });
 
   it('deserializeProject returns null for invalid input', () => {
@@ -403,7 +405,7 @@ describe('persistence', () => {
     expect(window.localStorage.getItem('groove-composer:project')).toContain('Temp');
 
     act(() => result.current.resetProject());
-    expect(result.current.state.projectName).toBe('Untitled Project');
+    expect(result.current.state.projectName).toBe('Starter Project');
     expect(window.localStorage.getItem('groove-composer:project')).toBeNull();
   });
 

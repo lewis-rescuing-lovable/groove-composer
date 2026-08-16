@@ -32,8 +32,11 @@ describe('InstrumentSidebar', () => {
 
   it('shows the default pattern in the drums panel', () => {
     renderSidebar();
-    expect(screen.getByText('Pattern 1')).toBeInTheDocument();
-    expect(screen.getByText('(16)')).toBeInTheDocument();
+    // "Drums" appears as both the panel tab and a pattern name
+    expect(screen.getAllByText('Drums').length).toBeGreaterThan(0);
+    expect(screen.getByText('Clap & Cymbal')).toBeInTheDocument();
+    // Each pattern shows its step count
+    expect(screen.getAllByText('(16)')).toHaveLength(2);
   });
 
   it('adds a new pattern when + is clicked', () => {
@@ -41,7 +44,7 @@ describe('InstrumentSidebar', () => {
     const buttons = screen.getAllByRole('button');
     // First 3 buttons are the panel tabs (Drums, Synth, Samples); index 3 is the "+" add-pattern button
     fireEvent.click(buttons[3]);
-    expect(screen.getByText('Pattern 2')).toBeInTheDocument();
+    expect(screen.getByText('Pattern 3')).toBeInTheDocument();
   });
 
   it('previews kit sounds on click', () => {
@@ -53,10 +56,10 @@ describe('InstrumentSidebar', () => {
 
   it('renames a pattern via the pencil button', () => {
     renderSidebar();
-    const renameBtn = screen.getByRole('button', { name: 'Rename Pattern 1' });
+    const renameBtn = screen.getByRole('button', { name: 'Rename Drums' });
     fireEvent.click(renameBtn);
     const input = screen.getByTestId('pattern-name-input-default-pattern');
-    expect(input).toHaveValue('Pattern 1');
+    expect(input).toHaveValue('Drums');
     fireEvent.change(input, { target: { value: 'Main Groove' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(screen.getByText('Main Groove')).toBeInTheDocument();
@@ -64,10 +67,11 @@ describe('InstrumentSidebar', () => {
 
   it('cancels rename on Escape', () => {
     renderSidebar();
-    fireEvent.click(screen.getByRole('button', { name: 'Rename Pattern 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Drums' }));
     const input = screen.getByTestId('pattern-name-input-default-pattern');
     fireEvent.change(input, { target: { value: 'Nope' } });
     fireEvent.keyDown(input, { key: 'Escape' });
-    expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+    // "Drums" appears as both the panel tab and a pattern name
+    expect(screen.getAllByText('Drums').length).toBeGreaterThan(0);
   });
 });

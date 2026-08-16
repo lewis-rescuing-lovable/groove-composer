@@ -18,7 +18,7 @@ describe('TopBar', () => {
 
   it('renders project name, bpm, time signature, and master volume', () => {
     renderTopBar();
-    expect(screen.getByDisplayValue('Untitled Project')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Starter Project')).toBeInTheDocument();
     expect(screen.getByDisplayValue('120')).toBeInTheDocument();
     expect(screen.getByText('4/4')).toBeInTheDocument();
     expect(screen.getByText('80')).toBeInTheDocument(); // 0.8 * 100 rounded
@@ -26,7 +26,7 @@ describe('TopBar', () => {
 
   it('updates project name on change', () => {
     renderTopBar();
-    const input = screen.getByDisplayValue('Untitled Project');
+    const input = screen.getByDisplayValue('Starter Project');
     fireEvent.change(input, { target: { value: 'My Groove' } });
     expect(input).toHaveValue('My Groove');
   });
@@ -63,9 +63,9 @@ describe('TopBar', () => {
 
   it('reset returns the project to defaults', () => {
     renderTopBar();
-    const name = screen.getByDisplayValue('Untitled Project');
+    const name = screen.getByDisplayValue('Starter Project');
     fireEvent.change(name, { target: { value: 'My Groove' } });
     fireEvent.click(screen.getByRole('button', { name: 'Reset project' }));
-    expect(screen.getByDisplayValue('Untitled Project')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Starter Project')).toBeInTheDocument();
   });
 });
