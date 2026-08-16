@@ -15,6 +15,8 @@ Deployed automatically to GitHub Pages on every push to `main`:
 - Real-time spectrum analyzer
 - Instrument sidebar
 - Audio engine powered by the Web Audio API
+- **Inline pattern renaming** — rename patterns directly in the sidebar or sequencer
+- **Project persistence** — autosaves to browser storage; save / load / reset controls in the top bar
 
 ## 🛠️ Tech Stack
 
@@ -87,10 +89,12 @@ The E2E suite lives in [`e2e/`](e2e/) and covers:
 
 - **`e2e/daw.spec.ts`** — functional flows: loading the DAW, adding tracks &
   patterns (making music), renaming tracks, toggling mute/solo, switching panels,
-  editing BPM, transport (play/stop), and duplicating clips.
+  editing BPM, transport (play/stop), duplicating clips, renaming patterns, and
+  saving / reloading / resetting a project.
 - **`e2e/performance.spec.ts`** — performance & memory monitoring: FPS,
   long-task count, and JS heap usage during idle, playback, and heavy pattern
-  toggling. Metrics are logged inline and guarded by generous thresholds.
+  toggling. Thresholds are tuned for a real-time DAW (smooth ~60fps, minimal
+  long tasks, no heap growth) and metrics are logged inline.
 - **`e2e/build.spec.ts`** — smoke tests against the production build.
 
 First-time setup (downloads the Chromium browser):

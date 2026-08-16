@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
-import { DAWProvider, useDAW, getActivePatternId } from './daw-store';
+import { DAWProvider, useDAW, getActivePatternId, serializeProject, deserializeProject } from './daw-store';
 import { createEmptyDrumGrid } from '@/lib/types';
 
 // We can't import the reducer directly; drive it through the provider.
@@ -309,5 +309,109 @@ describe('getActivePatternId', () => {
       selectedClipId: 'clip-1',
     });
     expect(getActivePatternId(s)).toBe('default-pattern');
+  });
+});
+
+describe('pattern renaming', () => {
+  it('renames a pattern with RENAME_PATTERN', () => {
+    const { result } = renderDAW();
+    const patternId = result.current.state.drumPatterns[0].id;
+    act(() => result.current.dispatch({ type: 'RENAME_PATTERN', patternId, name: 'Main Groove' }));
+    expect(result.current.state.drumPatterns[0].name).toBe('Main Groove');
+  });
+
+  it('leaves other patterns untouched when renaming one', () => {
+    const { result } = renderDAW();
+    act(() =>
+      result.current.dispatch({
+        type: 'ADD_PATTERN',
+        pattern: { id: 'p2', name: 'Pattern 2', steps: 16, grid: createEmptyDrumGrid(16) },
+      }),
+    );
+    const firstId = result.current.state.drumPatterns[0].id;
+    act(() => result.current.dispatch({ type: 'RENAME_PATTERN', patternId: firstId, name: 'Renamed' }));
+    expect(result.current.state.drumPatterns[0].name).toBe('Renamed');
+    expect(result.current.state.drumPatterns[1].name).toBe('Pattern 2');
+  });
+});
+
+describe('reset project', () => {
+  it('RESET_PROJECT restores the default project', () => {
+    const { result } = renderDAW();
+    act(() => result.current.dispatch({ type: 'SET_PROJECT_NAME', name: 'My Groove' }));
+    act(() => result.current.dispatch({ type: 'SET_BPM', bpm: 140 }));
+    act(() => result.current.dispatch({ type: 'ADD_TRACK_WITH_PATTERN' }));
+    expect(result.current.state.tracks).toHaveLength(2);
+
+    act(() => result.current.dispatch({ type: 'RESET_PROJECT' }));
+    expect(result.current.state.projectName).toBe('Untitled Project');
+    expect(result.current.state.bpm).toBe(120);
+    expect(result.current.state.tracks).toHaveLength(1);
+    expect(result.current.state.tracks[0].name).toBe('Drums');
+    expect(result.current.state.isPlaying).toBe(false);
+  });
+});
+
+describe('persistence', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('serializeProject produces a JSON string with project data', () => {
+    const { result } = renderDAW();
+    const raw = serializeProject(result.current.state);
+    const parsed = JSON.parse(raw);
+    expect(parsed.projectName).toBe('Untitled Project');
+    expect(parsed.bpm).toBe(120);
+    expect(Array.isArray(parsed.tracks)).toBe(true);
+    expect(Array.isArray(parsed.drumPatterns)).toBe(true);
+    // transient state must not be serialized
+    expect(parsed.isPlaying).toBeUndefined();
+    expect(parsed.currentStep).toBeUndefined();
+  });
+
+  it('deserializeProject round-trips a valid project', () => {
+    const { result } = renderDAW();
+    const raw = serializeProject(result.current.state);
+    const project = deserializeProject(raw);
+    expect(project).not.toBeNull();
+    expect(project!.projectName).toBe('Untitled Project');
+    expect(project!.bpm).toBe(120);
+    expect(project!.tracks).toHaveLength(1);
+  });
+
+  it('deserializeProject returns null for invalid input', () => {
+    expect(deserializeProject(null)).toBeNull();
+    expect(deserializeProject('not json')).toBeNull();
+    expect(deserializeProject('{"foo": 1}')).toBeNull();
+  });
+
+  it('saveProject writes to localStorage and loadProject restores it', () => {
+    const { result } = renderDAW();
+    act(() => result.current.dispatch({ type: 'SET_PROJECT_NAME', name: 'Saved Groove' }));
+    act(() => result.current.saveProject());
+
+    // Remount a fresh provider to simulate a new session, then load.
+    const reloaded = renderHook(() => useDAW(), { wrapper: DAWProvider });
+    expect(reloaded.result.current.state.projectName).toBe('Saved Groove');
+  });
+
+  it('resetProject clears storage and resets state', () => {
+    const { result } = renderDAW();
+    act(() => result.current.dispatch({ type: 'SET_PROJECT_NAME', name: 'Temp' }));
+    act(() => result.current.saveProject());
+    expect(window.localStorage.getItem('groove-composer:project')).toContain('Temp');
+
+    act(() => result.current.resetProject());
+    expect(result.current.state.projectName).toBe('Untitled Project');
+    expect(window.localStorage.getItem('groove-composer:project')).toBeNull();
+  });
+
+  it('loadProject returns false when nothing is saved', () => {
+    window.localStorage.removeItem('groove-composer:project');
+    const { result } = renderDAW();
+    let ok: boolean | null = null;
+    act(() => { ok = result.current.loadProject(); });
+    expect(ok).toBe(false);
   });
 });

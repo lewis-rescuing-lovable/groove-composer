@@ -53,4 +53,19 @@ describe('TopBar', () => {
     // After play, the button becomes a pause icon; verify state changed via no throw
     fireEvent.click(screen.getAllByRole('button')[0]);
   });
+
+  it('renders save, load, and reset controls', () => {
+    renderTopBar();
+    expect(screen.getByRole('button', { name: 'Save project' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Load project' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset project' })).toBeInTheDocument();
+  });
+
+  it('reset returns the project to defaults', () => {
+    renderTopBar();
+    const name = screen.getByDisplayValue('Untitled Project');
+    fireEvent.change(name, { target: { value: 'My Groove' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset project' }));
+    expect(screen.getByDisplayValue('Untitled Project')).toBeInTheDocument();
+  });
 });

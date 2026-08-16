@@ -1,11 +1,18 @@
-import { Play, Pause, Square, Repeat, Volume2 } from 'lucide-react';
+import { Play, Pause, Square, Repeat, Volume2, Save, FolderOpen, RotateCcw } from 'lucide-react';
 import { useDAW } from '@/stores/daw-store';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export function TopBar() {
-  const { state, dispatch, play, stop, pause } = useDAW();
+  const { state, dispatch, play, stop, pause, saveProject, loadProject, resetProject } = useDAW();
+
+  const handleLoad = () => {
+    if (!loadProject()) {
+      // Nothing saved — surface a gentle hint in the console and keep state as-is.
+      console.info('[groove-composer] No saved project found to load.');
+    }
+  };
 
   return (
     <div className="flex items-center gap-4 px-4 py-2 bg-card border-b border-border h-14 shrink-0">
@@ -55,6 +62,34 @@ export function TopBar() {
           className={`h-8 w-8 ${state.loopEnabled ? 'text-primary' : 'text-muted-foreground'}`}
         >
           <Repeat className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Project persistence */}
+      <div className="flex items-center gap-1 ml-2">
+        <Button
+          variant="ghost" size="icon" onClick={saveProject}
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          title="Save project (to browser storage)"
+          aria-label="Save project"
+        >
+          <Save className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost" size="icon" onClick={handleLoad}
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          title="Load saved project"
+          aria-label="Load project"
+        >
+          <FolderOpen className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost" size="icon" onClick={resetProject}
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          title="Reset project to defaults"
+          aria-label="Reset project"
+        >
+          <RotateCcw className="h-4 w-4" />
         </Button>
       </div>
 

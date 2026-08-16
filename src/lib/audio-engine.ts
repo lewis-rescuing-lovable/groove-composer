@@ -17,6 +17,7 @@ class AudioEngine {
   private bpm = 120;
   private loopEnabled = true;
   private onStepCallback: ((step: number) => void) | null = null;
+  private onEndedCallback: (() => void) | null = null;
   private trackInfos: TrackPlaybackInfo[] = [];
   private trackGains: Map<string, GainNode> = new Map();
   private trackPans: Map<string, StereoPannerNode> = new Map();
@@ -254,6 +255,11 @@ class AudioEngine {
     this.onStepCallback = cb;
   }
 
+  /** Fires only when playback reaches the natural end (repeat off). */
+  onEnded(cb: () => void) {
+    this.onEndedCallback = cb;
+  }
+
   private scheduler() {
     if (!this.ctx) return;
     while (this.nextStepTime < this.ctx.currentTime + this.lookahead) {
@@ -265,6 +271,7 @@ class AudioEngine {
           this.currentStep = 0;
         } else {
           this.stop();
+          this.onEndedCallback?.();
           return;
         }
       }

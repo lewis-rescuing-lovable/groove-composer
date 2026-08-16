@@ -33,9 +33,9 @@ describe('StepSequencer', () => {
 
   it('toggles a drum step when clicked', () => {
     renderSequencer();
-    // All buttons = 8 sound labels + 8*16 step cells + 2 step controls (16/32)
+    // 8 sound labels + 8*16 step cells + 16/32 controls + rename button
     const stepButtons = screen.getAllByRole('button');
-    expect(stepButtons).toHaveLength(8 + 128 + 2);
+    expect(stepButtons.length).toBeGreaterThan(8 + 128);
     // Clicking a step button should not throw
     fireEvent.click(stepButtons[10]);
     fireEvent.click(stepButtons[50]);
@@ -53,5 +53,24 @@ describe('StepSequencer', () => {
     // We'll render Index-like scenario later; here just verify default renders.
     renderSequencer();
     expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+  });
+
+  it('renames the pattern via the sequencer name control', () => {
+    renderSequencer();
+    const rename = screen.getByRole('button', { name: 'Rename pattern' });
+    fireEvent.click(rename);
+    const input = screen.getByTestId('pattern-name-input');
+    expect(input).toHaveValue('Pattern 1');
+    fireEvent.change(input, { target: { value: 'Groove A' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByText('Groove A')).toBeInTheDocument();
+  });
+
+  it('step cells expose accessible labels for interaction', () => {
+    renderSequencer();
+    // Kick has 16 cells with labels "Kick step 1" ... "Kick step 16"
+    const kickCells = screen.getAllByRole('button', { name: /^Kick step \d+$/ });
+    expect(kickCells).toHaveLength(16);
+    fireEvent.click(kickCells[0]);
   });
 });

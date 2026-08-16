@@ -1,7 +1,8 @@
 import { useDAW, getActivePatternId } from '@/stores/daw-store';
 import { generateId, createEmptyDrumGrid, DRUM_LABELS, DRUM_SOUNDS } from '@/lib/types';
-import { Drum, Music, FileAudio, Plus, Trash2 } from 'lucide-react';
+import { Drum, Music, FileAudio, Plus, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
 export function InstrumentSidebar() {
   const { state, dispatch, previewSound } = useDAW();
@@ -93,9 +94,13 @@ export function InstrumentSidebar() {
                     }`}
                   onClick={() => assignPattern(p.id)}
                 >
-                  <div className="truncate">
-                    {p.name}
-                    <span className="text-muted-foreground ml-1">({p.steps})</span>
+                  <div className="flex items-center gap-1 min-w-0 flex-1">
+                    <PatternName
+                      id={p.id}
+                      name={p.name}
+                      steps={p.steps}
+                      onRename={(name) => dispatch({ type: 'RENAME_PATTERN', patternId: p.id, name })}
+                    />
                   </div>
                   {!inUse && (
                     <button
@@ -144,5 +149,63 @@ export function InstrumentSidebar() {
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Inline-editable pattern name ─────────────────────────────
+function PatternName({
+  id, name, steps, onRename,
+}: {
+  id: string;
+  name: string;
+  steps: number;
+  onRename: (name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+
+  const commit = () => {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== name) onRename(trimmed);
+  };
+
+  if (editing) {
+    return (
+      <input
+        data-testid={`pattern-name-input-${id}`}
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') { setDraft(name); setEditing(false); }
+        }}
+        onClick={(e) => e.stopPropagation()}
+        className="min-w-0 flex-1 bg-transparent text-xs font-mono text-foreground outline-none border-b border-primary px-0.5"
+      />
+    );
+  }
+
+  return (
+    <span className="min-w-0 flex-1 flex items-center gap-1 group/name">
+      <span className="truncate" title="Double-click to rename">
+        {name}
+        <span className="text-muted-foreground ml-1">({steps})</span>
+      </span>
+      <button
+        className="shrink-0 p-0.5 rounded opacity-0 group-hover/name:opacity-100 hover:bg-primary/10 transition-all"
+        onClick={(e) => {
+          e.stopPropagation();
+          setDraft(name);
+          setEditing(true);
+        }}
+        title="Rename pattern"
+        aria-label={`Rename ${name}`}
+      >
+        <Pencil className="h-3 w-3" />
+      </button>
+    </span>
   );
 }

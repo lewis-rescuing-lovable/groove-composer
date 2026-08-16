@@ -18,6 +18,23 @@ Object.defineProperty(window, "matchMedia", {
 globalThis.requestAnimationFrame = (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 0) as unknown as number;
 globalThis.cancelAnimationFrame = (id: number) => clearTimeout(id);
 
+// jsdom 20 does not provide localStorage — stub a simple in-memory store.
+const createLocalStorageMock = () => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => (key in store ? store[key] : null),
+    setItem: (key: string, value: string) => { store[key] = String(value); },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { store = {}; },
+    key: (i: number) => Object.keys(store)[i] ?? null,
+    get length() { return Object.keys(store).length; },
+  };
+};
+Object.defineProperty(window, "localStorage", {
+  writable: true,
+  value: createLocalStorageMock(),
+});
+
 // ResizeObserver stub required by Radix primitives (e.g. Slider)
 class ResizeObserverStub {
   observe() {}

@@ -97,4 +97,38 @@ test.describe("groove-composer DAW", () => {
     // Duplicating creates a new clip (two drum emojis on the same lane)
     await expect(page.getByText("🥁")).toHaveCount(2);
   });
+
+  test("renames a pattern from the sidebar", async ({ page }) => {
+    // Pencil button for the default pattern
+    const rename = page.getByRole("button", { name: "Rename Pattern 1" });
+    await rename.click();
+    const input = page.getByTestId("pattern-name-input-default-pattern");
+    await input.fill("Main Groove");
+    await input.press("Enter");
+    await expect(page.getByText("Main Groove", { exact: true })).toBeVisible();
+  });
+
+  test("renames a pattern from the sequencer", async ({ page }) => {
+    const rename = page.getByRole("button", { name: "Rename pattern", exact: true });
+    await rename.click();
+    const input = page.getByTestId("pattern-name-input");
+    await input.fill("Groove A");
+    await input.press("Enter");
+    await expect(page.getByText("Groove A", { exact: true })).toBeVisible();
+  });
+
+  test("saves, reloads, and resets a project", async ({ page }) => {
+    // Rename the project so we can detect persistence
+    const projectName = page.locator('input[value="Untitled Project"]');
+    await projectName.fill("Persisted Groove");
+
+    // Save explicitly, then reload the page (fresh session)
+    await page.getByRole("button", { name: "Save project" }).click();
+    await page.reload();
+    await expect(page.locator('input[value="Persisted Groove"]')).toBeVisible();
+
+    // Reset returns to defaults
+    await page.getByRole("button", { name: "Reset project" }).click();
+    await expect(page.locator('input[value="Untitled Project"]')).toBeVisible();
+  });
 });

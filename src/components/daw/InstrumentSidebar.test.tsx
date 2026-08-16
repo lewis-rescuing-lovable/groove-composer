@@ -50,4 +50,24 @@ describe('InstrumentSidebar', () => {
     expect(screen.getByText('Kick')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Kick'));
   });
+
+  it('renames a pattern via the pencil button', () => {
+    renderSidebar();
+    const renameBtn = screen.getByRole('button', { name: 'Rename Pattern 1' });
+    fireEvent.click(renameBtn);
+    const input = screen.getByTestId('pattern-name-input-default-pattern');
+    expect(input).toHaveValue('Pattern 1');
+    fireEvent.change(input, { target: { value: 'Main Groove' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByText('Main Groove')).toBeInTheDocument();
+  });
+
+  it('cancels rename on Escape', () => {
+    renderSidebar();
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Pattern 1' }));
+    const input = screen.getByTestId('pattern-name-input-default-pattern');
+    fireEvent.change(input, { target: { value: 'Nope' } });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+  });
 });

@@ -82,6 +82,7 @@ type Action =
   | { type: 'TOGGLE_DRUM_STEP'; patternId: string; sound: DrumSound; step: number }
   | { type: 'ADD_PATTERN'; pattern: DrumPattern }
   | { type: 'REMOVE_PATTERN'; patternId: string }
+  | { type: 'RENAME_PATTERN'; patternId: string; name: string }
   | { type: 'ASSIGN_PATTERN_TO_CLIP'; trackId: string; clipId: string; patternId: string }
   | { type: 'SET_PATTERN_STEPS'; patternId: string; steps: number }
   | { type: 'ADD_TRACK_WITH_PATTERN' }
@@ -99,7 +100,8 @@ type Action =
   | { type: 'DUPLICATE_CLIP'; trackId: string; clipId: string }
   | { type: 'SET_ACTIVE_PANEL'; panel: 'drums' | 'synth' | 'samples' }
   | { type: 'SELECT_TRACK'; trackId: string }
-  | { type: 'LOAD_PROJECT'; project: DAWProject };
+  | { type: 'LOAD_PROJECT'; project: DAWProject }
+  | { type: 'RESET_PROJECT' };
 
 function reducer(state: DAWState, action: Action): DAWState {
   switch (action.type) {
@@ -129,6 +131,13 @@ function reducer(state: DAWState, action: Action): DAWState {
     }
     case 'ADD_PATTERN':
       return { ...state, drumPatterns: [...state.drumPatterns, action.pattern] };
+    case 'RENAME_PATTERN':
+      return {
+        ...state,
+        drumPatterns: state.drumPatterns.map(p =>
+          p.id === action.patternId ? { ...p, name: action.name } : p
+        ),
+      };
     case 'REMOVE_PATTERN': {
       // Don't remove if it's still used by a clip
       const inUse = state.tracks.some(t => t.clips.some(c => c.patternId === action.patternId));
@@ -324,6 +333,8 @@ function reducer(state: DAWState, action: Action): DAWState {
     }
     case 'LOAD_PROJECT':
       return { ...state, ...action.project, isPlaying: false, currentStep: -1 };
+    case 'RESET_PROJECT':
+      return { ...initialState };
     default:
       return state;
   }
@@ -337,12 +348,77 @@ interface DAWContextType {
   pause: () => void;
   previewSound: (sound: DrumSound) => void;
   getActivePattern: () => DrumPattern | null;
+  saveProject: () => void;
+  loadProject: () => boolean;
+  resetProject: () => void;
 }
 
 const DAWContext = createContext<DAWContextType | null>(null);
 
+// ─── Persistence ─────────────────────────────────────────────
+const STORAGE_KEY = 'groove-composer:project';
+
+/** Serialize only the project data (no transient playback/selection state). */
+export function serializeProject(state: DAWState): string {
+  const project: DAWProject = {
+    projectName: state.projectName,
+    bpm: state.bpm,
+    timeSignature: state.timeSignature,
+    tracks: state.tracks,
+    drumPatterns: state.drumPatterns,
+    synthPatterns: state.synthPatterns,
+    masterVolume: state.masterVolume,
+    loopEnabled: state.loopEnabled,
+    loopStart: state.loopStart,
+    loopEnd: state.loopEnd,
+  };
+  return JSON.stringify(project);
+}
+
+/** Attempt to hydrate a DAWProject from a serialized string. Returns null on failure. */
+export function deserializeProject(raw: string | null): DAWProject | null {
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw) as Partial<DAWProject>;
+    if (
+      typeof data.projectName !== 'string'
+      || !Array.isArray(data.tracks)
+      || !Array.isArray(data.drumPatterns)
+      || !Array.isArray(data.synthPatterns)
+      || typeof data.bpm !== 'number'
+    ) {
+      return null;
+    }
+    return {
+      projectName: data.projectName,
+      bpm: data.bpm,
+      timeSignature: Array.isArray(data.timeSignature)
+        ? (data.timeSignature as [number, number])
+        : initialState.timeSignature,
+      tracks: data.tracks,
+      drumPatterns: data.drumPatterns,
+      synthPatterns: data.synthPatterns,
+      masterVolume: typeof data.masterVolume === 'number' ? data.masterVolume : 0.8,
+      loopEnabled: typeof data.loopEnabled === 'boolean' ? data.loopEnabled : true,
+      loopStart: typeof data.loopStart === 'number' ? data.loopStart : 0,
+      loopEnd: typeof data.loopEnd === 'number' ? data.loopEnd : 4,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function loadFromStorage(): DAWProject | null {
+  if (typeof window === 'undefined') return null;
+  return deserializeProject(window.localStorage.getItem(STORAGE_KEY));
+}
+
 export function DAWProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  // Hydrate from localStorage on first render (client-side).
+  const [state, dispatch] = useReducer(reducer, initialState, (base) => {
+    const saved = loadFromStorage();
+    return saved ? { ...base, ...saved, isPlaying: false, currentStep: -1 } : base;
+  });
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -350,6 +426,45 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
     const patternId = getActivePatternId(stateRef.current);
     if (!patternId) return null;
     return stateRef.current.drumPatterns.find(p => p.id === patternId) ?? null;
+  }, []);
+
+  // Autosave whenever the project data changes.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const timer = window.setTimeout(() => {
+      window.localStorage.setItem(STORAGE_KEY, serializeProject(stateRef.current));
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [
+    state.projectName,
+    state.bpm,
+    state.timeSignature,
+    state.tracks,
+    state.drumPatterns,
+    state.synthPatterns,
+    state.masterVolume,
+    state.loopEnabled,
+    state.loopStart,
+    state.loopEnd,
+  ]);
+
+  const saveProject = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEY, serializeProject(stateRef.current));
+  }, []);
+
+  const loadProject = useCallback((): boolean => {
+    const saved = loadFromStorage();
+    if (!saved) return false;
+    dispatch({ type: 'LOAD_PROJECT', project: saved });
+    return true;
+  }, []);
+
+  const resetProject = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(STORAGE_KEY);
+    audioEngine.stop();
+    dispatch({ type: 'RESET_PROJECT' });
   }, []);
 
   useEffect(() => {
@@ -372,6 +487,15 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     audioEngine.onStep((step) => {
       dispatch({ type: 'SET_CURRENT_STEP', step });
+    });
+  }, []);
+
+  // When repeat is off and playback reaches the end, reset the UI state so the
+  // transport button flips back to Play.
+  useEffect(() => {
+    audioEngine.onEnded(() => {
+      dispatch({ type: 'SET_PLAYING', playing: false });
+      dispatch({ type: 'SET_CURRENT_STEP', step: -1 });
     });
   }, []);
 
@@ -398,7 +522,9 @@ export function DAWProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <DAWContext.Provider value={{ state, dispatch, play, stop, pause, previewSound, getActivePattern }}>
+    <DAWContext.Provider
+      value={{ state, dispatch, play, stop, pause, previewSound, getActivePattern, saveProject, loadProject, resetProject }}
+    >
       {children}
     </DAWContext.Provider>
   );
