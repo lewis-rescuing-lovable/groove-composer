@@ -18,10 +18,13 @@
 
 <!-- Describe the tests you ran to verify your changes. -->
 
-- [ ] Unit tests pass (`bun run test`)
-- [ ] Lint passes (`bun run lint`)
-- [ ] Typecheck passes (`bun run typecheck`)
-- [ ] Build passes (`bun run build`)
+- [ ] Unit tests pass (`npm run test`)
+- [ ] Lint passes (`npm run lint`)
+- [ ] Typecheck passes (`npm run typecheck`)
+- [ ] Build passes (`npm run build`)
+- [ ] End to end tests pass (`npm run test:e2e`)
+- [ ] End to end tests pass against the production build (`npm run test:e2e:build`)
+- [ ] Knip (dead code) passes (`npm run knip`)
 - [ ] Manual testing (describe below)
 
 ## Related issues
