@@ -2,10 +2,11 @@ import React, { useReducer, useCallback, useRef, useEffect } from 'react';
 import { DrumSound, DrumPattern, SynthVoice } from '@/lib/types';
 import { audioEngine } from '@/lib/audio-engine';
 import { sampleLoader } from '@/lib/sample-loader';
+import { toast } from '@/components/ui/sonner';
 import {
   DAWContext, DAWState, Action, reducer, initialState,
   getActivePatternId, serializeProject, loadFromStorage, STORAGE_KEY,
-  loadPrefsFromStorage, savePrefsToStorage,
+  loadPrefsFromStorage, savePrefsToStorage, loadFromQueryString,
 } from './daw-store-context';
 
 export function DAWProvider({
@@ -16,16 +17,22 @@ export function DAWProvider({
   /** Optional custom initial state (e.g. for Storybook stories). When provided, localStorage hydration is skipped. */
   initialState?: DAWState;
 }) {
-  // Hydrate from localStorage on first render (client-side), unless a custom
-  // initial state is supplied (e.g. by a Storybook story).
+  // Hydrate on first render (client-side). Priority: a `?project=` query string
+  // (shared link) wins over localStorage, but NEVER overwrites the saved project
+  // — the shared state lives only in memory. Autosave is forced OFF so an
+  // ephemeral shared project isn't silently written over the user's work until
+  // they explicitly re-enable it.
+  const sharedRef = useRef(false);
   const [state, dispatch] = useReducer(reducer, initialOverride ?? initialState, (base) => {
     if (initialOverride) return base;
-    const saved = loadFromStorage();
     const prefs = loadPrefsFromStorage();
+    const shared = loadFromQueryString();
+    sharedRef.current = shared !== null;
+    const saved = shared ?? loadFromStorage();
     return {
       ...base,
       ...(saved ? { ...saved, isPlaying: false, currentStep: -1 } : {}),
-      autosaveEnabled: prefs.autosaveEnabled,
+      autosaveEnabled: shared ? false : prefs.autosaveEnabled,
       autosaveIntervalSeconds: prefs.autosaveIntervalSeconds,
     };
   });
@@ -35,6 +42,16 @@ export function DAWProvider({
   // Attach the shared sample loader to the audio engine once.
   useEffect(() => {
     audioEngine.setSampleLoader(sampleLoader);
+  }, []);
+
+  // Surface a toast when the app opened from a shared `?project=` link, and
+  // remind the user that autosave is off until they re-enable it.
+  useEffect(() => {
+    if (sharedRef.current) {
+      toast('Project loaded from link', {
+        description: 'Autosave is off until you re-enable it.',
+      });
+    }
   }, []);
 
   const getActivePattern = useCallback((): DrumPattern | null => {
@@ -70,6 +87,14 @@ export function DAWProvider({
     const saved = loadFromStorage();
     if (!saved) return false;
     dispatch({ type: 'LOAD_PROJECT', project: saved });
+    return true;
+  }, []);
+
+  const loadProjectFromQuery = useCallback((): boolean => {
+    const shared = loadFromQueryString();
+    if (!shared) return false;
+    dispatch({ type: 'LOAD_PROJECT', project: shared });
+    dispatch({ type: 'SET_AUTOSAVE_ENABLED', enabled: false });
     return true;
   }, []);
 
@@ -162,7 +187,7 @@ export function DAWProvider({
 
   return (
     <DAWContext.Provider
-      value={{ state, dispatch, play, stop, pause, previewSound, previewSample, previewNote, addSampleTrack, addSynthTrack, getActivePattern, saveProject, loadProject, resetProject }}
+      value={{ state, dispatch, play, stop, pause, previewSound, previewSample, previewNote, addSampleTrack, addSynthTrack, getActivePattern, saveProject, loadProject, resetProject, loadProjectFromQuery }}
     >
       {children}
     </DAWContext.Provider>

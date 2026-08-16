@@ -1,6 +1,9 @@
-import { Play, Pause, Square, Repeat, Volume2, VolumeX, Save, FolderOpen, RotateCcw } from 'lucide-react';
+import { Play, Pause, Square, Repeat, Volume2, VolumeX, Save, FolderOpen, RotateCcw, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { useDAW } from '@/stores/daw-store-context';
+import { toast } from '@/components/ui/sonner';
+import { getShareUrl } from '@/lib/share';
+import { serializeProject } from '@/stores/daw-store-context';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +17,18 @@ export function TopBar() {
     if (!loadProject()) {
       // Nothing saved — surface a gentle hint in the console and keep state as-is.
       console.info('[groove-composer] No saved project found to load.');
+    }
+  };
+
+  const handleShare = async () => {
+    const url = getShareUrl(serializeProject(state));
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Share link copied', { description: 'Anyone with this link can open your project.' });
+    } catch {
+      // Clipboard unavailable (e.g. insecure context) — fall back to the address bar.
+      window.location.href = url;
+      toast.success('Share link created', { description: 'The URL now contains your project.' });
     }
   };
 
@@ -98,6 +113,14 @@ export function TopBar() {
           aria-label="Load project"
         >
           <FolderOpen className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost" size="icon" onClick={handleShare}
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          title="Share project as a link"
+          aria-label="Share project"
+        >
+          <Share2 className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost" size="icon" onClick={resetProject}

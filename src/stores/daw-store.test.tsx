@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 import { DAWProvider } from './daw-store';
-import { useDAW, getActivePatternId, serializeProject, deserializeProject, savePrefsToStorage, loadPrefsFromStorage, PREFS_KEY } from './daw-store-context';
+import { useDAW, getActivePatternId, serializeProject, deserializeProject, savePrefsToStorage, loadPrefsFromStorage, loadFromQueryString, PREFS_KEY } from './daw-store-context';
 import { createEmptyDrumGrid } from '@/lib/types';
+import { encodeProjectToQuery, QUERY_PARAM } from '@/lib/share';
 
 // We can't import the reducer directly; drive it through the provider.
 function renderDAW() {
@@ -553,5 +554,118 @@ describe('autosave preferences', () => {
   it('loadPrefsFromStorage falls back to defaults on invalid data', () => {
     window.localStorage.setItem(PREFS_KEY, 'not json');
     expect(loadPrefsFromStorage()).toEqual({ autosaveEnabled: true, autosaveIntervalSeconds: 5 });
+  });
+});
+
+describe('query-string project load', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.localStorage.clear();
+  });
+
+  function setQueryUrl(projectJson: string | null) {
+    const url = projectJson === null
+      ? new URL('http://localhost:8080/')
+      : new URL(`http://localhost:8080/?${QUERY_PARAM}=${encodeProjectToQuery(projectJson)}`);
+    Object.defineProperty(window, 'location', { writable: true, value: url });
+  }
+
+  it('loadFromQueryString parses a valid shared project', () => {
+    const json = JSON.stringify({
+      projectName: 'Shared Groove',
+      bpm: 150,
+      timeSignature: [4, 4],
+      tracks: [],
+      drumPatterns: [],
+      synthPatterns: [],
+      masterVolume: 0.8,
+      loopEnabled: true,
+      loopStart: 0,
+      loopEnd: 4,
+    });
+    setQueryUrl(json);
+    const project = loadFromQueryString();
+    expect(project).not.toBeNull();
+    expect(project!.projectName).toBe('Shared Groove');
+    expect(project!.bpm).toBe(150);
+  });
+
+  it('loadFromQueryString returns null when no query param is present', () => {
+    setQueryUrl(null);
+    expect(loadFromQueryString()).toBeNull();
+  });
+
+  it('loadFromQueryString returns null for malformed data', () => {
+    setQueryUrl('not json');
+    expect(loadFromQueryString()).toBeNull();
+  });
+
+  it('hydrating from a query string loads the shared project and forces autosave off', () => {
+    savePrefsToStorage({ autosaveEnabled: true, autosaveIntervalSeconds: 30 });
+    const json = JSON.stringify({
+      projectName: 'From Link',
+      bpm: 95,
+      timeSignature: [4, 4],
+      tracks: [],
+      drumPatterns: [],
+      synthPatterns: [],
+      masterVolume: 0.8,
+      loopEnabled: true,
+      loopStart: 0,
+      loopEnd: 4,
+    });
+    setQueryUrl(json);
+    const { result } = renderDAW();
+    expect(result.current.state.projectName).toBe('From Link');
+    expect(result.current.state.bpm).toBe(95);
+    // Autosave forced off even though the stored preference says on.
+    expect(result.current.state.autosaveEnabled).toBe(false);
+  });
+
+  it('loading from a query string does not overwrite localStorage', () => {
+    window.localStorage.setItem('groove-composer:project', JSON.stringify({ projectName: 'Saved' }));
+    setQueryUrl(JSON.stringify({ projectName: 'From Link', bpm: 95, timeSignature: [4, 4], tracks: [], drumPatterns: [], synthPatterns: [], masterVolume: 0.8, loopEnabled: true, loopStart: 0, loopEnd: 4 }));
+    renderDAW();
+    // The saved project key is untouched by the shared link load.
+    expect(window.localStorage.getItem('groove-composer:project')).toContain('"projectName":"Saved"');
+  });
+
+  it('a malformed query string falls back to localStorage without blocking', () => {
+    // A saved project exists in storage.
+    window.localStorage.setItem('groove-composer:project', JSON.stringify({
+      projectName: 'Saved Groove', bpm: 120, timeSignature: [4, 4], tracks: [], drumPatterns: [], synthPatterns: [], masterVolume: 0.8, loopEnabled: true, loopStart: 0, loopEnd: 4,
+    }));
+    // The query param is present but invalid base64.
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: new URL(`http://localhost:8080/?${QUERY_PARAM}=!!!not-valid-base64!!!`),
+    });
+    const { result } = renderDAW();
+    // We fall through to the saved project immediately (no delay/blocking).
+    expect(result.current.state.projectName).toBe('Saved Groove');
+    // Autosave stays on (we did NOT load from a shared link).
+    expect(result.current.state.autosaveEnabled).toBe(true);
+  });
+
+  it('a query string with invalid JSON falls back to localStorage', () => {
+    window.localStorage.setItem('groove-composer:project', JSON.stringify({
+      projectName: 'Saved Groove', bpm: 120, timeSignature: [4, 4], tracks: [], drumPatterns: [], synthPatterns: [], masterVolume: 0.8, loopEnabled: true, loopStart: 0, loopEnd: 4,
+    }));
+    // Valid base64, but the decoded content is not valid JSON.
+    setQueryUrl('this is not json');
+    const { result } = renderDAW();
+    expect(result.current.state.projectName).toBe('Saved Groove');
+    expect(result.current.state.autosaveEnabled).toBe(true);
+  });
+
+  it('a query string with valid JSON but the wrong shape falls back to localStorage', () => {
+    window.localStorage.setItem('groove-composer:project', JSON.stringify({
+      projectName: 'Saved Groove', bpm: 120, timeSignature: [4, 4], tracks: [], drumPatterns: [], synthPatterns: [], masterVolume: 0.8, loopEnabled: true, loopStart: 0, loopEnd: 4,
+    }));
+    // Valid JSON, but missing the required project fields (e.g. no tracks).
+    setQueryUrl(JSON.stringify({ foo: 'bar' }));
+    const { result } = renderDAW();
+    expect(result.current.state.projectName).toBe('Saved Groove');
+    expect(result.current.state.autosaveEnabled).toBe(true);
   });
 });

@@ -4,6 +4,7 @@ import {
   generateId, createEmptyDrumGrid, DrumSound, SynthVoice,
 } from '@/lib/types';
 import { AUTOSAVE_MAX_SECONDS } from '@/lib/autosave-time';
+import { getQueryProjectJson } from '@/lib/share';
 
 // Default pattern
 const defaultPattern: DrumPattern = {
@@ -490,6 +491,7 @@ export interface DAWContextType {
   saveProject: () => void;
   loadProject: () => boolean;
   resetProject: () => void;
+  loadProjectFromQuery: () => boolean;
 }
 
 export const DAWContext = createContext<DAWContextType | null>(null);
@@ -584,6 +586,17 @@ export function deserializeProject(raw: string | null): DAWProject | null {
 export function loadFromStorage(): DAWProject | null {
   if (typeof window === 'undefined') return null;
   return deserializeProject(window.localStorage.getItem(STORAGE_KEY));
+}
+
+/**
+ * Read + decode a shared project from the URL's `?project=` query parameter.
+ * Returns the parsed DAWProject, or null if absent or malformed. It does NOT
+ * touch localStorage, so a shared link never overwrites the user's saved work.
+ */
+export function loadFromQueryString(): DAWProject | null {
+  const json = getQueryProjectJson();
+  if (!json) return null;
+  return deserializeProject(json);
 }
 
 export function useDAW() {
