@@ -491,7 +491,6 @@ export interface DAWContextType {
   saveProject: () => void;
   loadProject: () => boolean;
   resetProject: () => void;
-  loadProjectFromQuery: () => boolean;
 }
 
 export const DAWContext = createContext<DAWContextType | null>(null);

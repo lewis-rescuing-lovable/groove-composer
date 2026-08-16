@@ -90,14 +90,6 @@ export function DAWProvider({
     return true;
   }, []);
 
-  const loadProjectFromQuery = useCallback((): boolean => {
-    const shared = loadFromQueryString();
-    if (!shared) return false;
-    dispatch({ type: 'LOAD_PROJECT', project: shared });
-    dispatch({ type: 'SET_AUTOSAVE_ENABLED', enabled: false });
-    return true;
-  }, []);
-
   const resetProject = useCallback(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.removeItem(STORAGE_KEY);
@@ -187,7 +179,7 @@ export function DAWProvider({
 
   return (
     <DAWContext.Provider
-      value={{ state, dispatch, play, stop, pause, previewSound, previewSample, previewNote, addSampleTrack, addSynthTrack, getActivePattern, saveProject, loadProject, resetProject, loadProjectFromQuery }}
+      value={{ state, dispatch, play, stop, pause, previewSound, previewSample, previewNote, addSampleTrack, addSynthTrack, getActivePattern, saveProject, loadProject, resetProject }}
     >
       {children}
     </DAWContext.Provider>
