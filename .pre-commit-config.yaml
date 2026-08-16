@@ -1,0 +1,79 @@
+# Pre-commit configuration.
+#
+# Runs the project's full quality suite before every commit. These are
+# whole-project checks (not per-file), so they run once per commit regardless
+# of which files are staged.
+#
+# Install the framework (Python tool, NOT an npm dependency):
+#   uv tool install pre-commit
+#   pre-commit install
+#
+# Skip the hooks for a single commit (e.g. WIP):
+#   git commit --no-verify
+#   # or: SKIP=lint,typecheck,test,build,test:e2e,test:e2e:build,knip,test:coverage git commit
+#
+# Run the hooks manually without committing:
+#   pre-commit run --all-files
+repos:
+  - repo: local
+    hooks:
+      - id: lint
+        name: lint
+        entry: npm run lint
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: typecheck
+        name: typecheck
+        entry: npm run typecheck
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: test
+        name: test
+        entry: npm run test
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: build
+        name: build
+        entry: npm run build
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: test:e2e
+        name: test:e2e
+        entry: npm run test:e2e
+        language: system
+        pass_filenames: false
+        always_run: true
+        # Both E2E hooks write to the same playwright-report/ and test-results/
+        # dirs; run them serially to avoid a race that pre-commit flags as
+        # "files were modified".
+        require_serial: true
+
+      - id: test:e2e:build
+        name: test:e2e:build
+        entry: npm run test:e2e:build
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+
+      - id: knip
+        name: knip
+        entry: npx knip
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: test:coverage
+        name: test:coverage
+        entry: npm run test:coverage
+        language: system
+        pass_filenames: false
+        always_run: true
