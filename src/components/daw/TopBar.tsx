@@ -32,7 +32,7 @@ export function TopBar() {
           max={300}
           value={state.bpm}
           onChange={(e) => dispatch({ type: 'SET_BPM', bpm: Math.max(40, Math.min(300, Number(e.target.value))) })}
-          className="w-16 h-8 bg-muted border-border text-sm font-mono text-center"
+          className="w-24 h-8 bg-muted border-border text-sm font-mono text-center"
         />
       </div>
 
