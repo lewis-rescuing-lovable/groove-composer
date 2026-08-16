@@ -26,6 +26,7 @@
 - [ ] End to end tests pass against the production build (`npm run test:e2e:build`)
 - [ ] Knip (dead code) passes (`npm run knip`)
 - [ ] Manual testing (describe below)
+- [ ] Coverage report reviewed (`npm run test:coverage`)
 
 ## Related issues
 
