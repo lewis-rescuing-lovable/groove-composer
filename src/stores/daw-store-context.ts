@@ -463,7 +463,10 @@ export function reducer(state: DAWState, action: Action): DAWState {
     case 'LOAD_PROJECT':
       return { ...state, ...action.project, isPlaying: false, currentStep: -1 };
     case 'RESET_PROJECT':
-      return { ...initialState };
+      // Reset to defaults, but force autosave OFF (like a shared link) so the
+      // default project isn't silently written over the user's saved work until
+      // they explicitly re-enable it.
+      return { ...initialState, autosaveEnabled: false };
     case 'SET_AUTOSAVE_ENABLED':
       return { ...state, autosaveEnabled: action.enabled };
     case 'SET_AUTOSAVE_INTERVAL': {

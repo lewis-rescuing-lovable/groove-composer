@@ -135,8 +135,13 @@ test.describe("groove-composer DAW", () => {
     await page.reload();
     await expect(page.locator('input[value="Persisted Groove"]')).toBeVisible();
 
-    // Reset returns to defaults
+    // Reset returns to defaults (after confirming the dialog)
     await page.getByRole("button", { name: "Reset project" }).click();
+    await page.getByRole("button", { name: "Reset", exact: true }).click();
     await expect(page.locator('input[value="Starter Project"]')).toBeVisible();
+
+    // Reset only affects the loaded project — the saved project in storage survives a reload.
+    await page.reload();
+    await expect(page.locator('input[value="Persisted Groove"]')).toBeVisible();
   });
 });

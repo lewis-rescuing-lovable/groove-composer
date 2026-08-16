@@ -441,6 +441,9 @@ describe('reset project', () => {
     expect(result.current.state.tracks).toHaveLength(2);
     expect(result.current.state.tracks[0].name).toBe('Drums');
     expect(result.current.state.isPlaying).toBe(false);
+    // Autosave is forced off after reset so the default project isn't written
+    // over the user's saved work until they re-enable it.
+    expect(result.current.state.autosaveEnabled).toBe(false);
   });
 });
 
@@ -488,7 +491,7 @@ describe('persistence', () => {
     expect(reloaded.result.current.state.projectName).toBe('Saved Groove');
   });
 
-  it('resetProject clears storage and resets state', () => {
+  it('resetProject resets state but leaves storage intact', () => {
     const { result } = renderDAW();
     act(() => result.current.dispatch({ type: 'SET_PROJECT_NAME', name: 'Temp' }));
     act(() => result.current.saveProject());
@@ -496,7 +499,8 @@ describe('persistence', () => {
 
     act(() => result.current.resetProject());
     expect(result.current.state.projectName).toBe('Starter Project');
-    expect(window.localStorage.getItem('groove-composer:project')).toBeNull();
+    // The saved project in storage is left untouched.
+    expect(window.localStorage.getItem('groove-composer:project')).toContain('Temp');
   });
 
   it('loadProject returns false when nothing is saved', () => {

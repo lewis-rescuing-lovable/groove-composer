@@ -91,8 +91,6 @@ export function DAWProvider({
   }, []);
 
   const resetProject = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.removeItem(STORAGE_KEY);
     audioEngine.stop();
     dispatch({ type: 'RESET_PROJECT' });
   }, []);

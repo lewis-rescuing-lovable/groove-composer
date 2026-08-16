@@ -8,6 +8,17 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { formatAutosaveInterval, parseAutosaveInterval } from '@/lib/autosave-time';
 
 export function TopBar() {
@@ -122,14 +133,31 @@ export function TopBar() {
         >
           <Share2 className="h-4 w-4" />
         </Button>
-        <Button
-          variant="ghost" size="icon" onClick={resetProject}
-          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-          title="Reset project to defaults"
-          aria-label="Reset project"
-        >
-          <RotateCcw className="h-4 w-4" />
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost" size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              title="Reset project to defaults"
+              aria-label="Reset project"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset project?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This resets the loaded project to the defaults. Your saved project in
+                browser storage is left untouched.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={resetProject}>Reset</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* Master Volume */}

@@ -14,6 +14,7 @@ function renderTopBar() {
 describe('TopBar', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    window.localStorage.clear();
   });
 
   it('renders project name, bpm, time signature, and master volume', () => {
@@ -66,7 +67,18 @@ describe('TopBar', () => {
     const name = screen.getByDisplayValue('Starter Project');
     fireEvent.change(name, { target: { value: 'My Groove' } });
     fireEvent.click(screen.getByRole('button', { name: 'Reset project' }));
+    // Confirmation dialog appears; confirm the reset.
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(screen.getByDisplayValue('Starter Project')).toBeInTheDocument();
+  });
+
+  it('reset does not change state when the dialog is cancelled', () => {
+    renderTopBar();
+    const name = screen.getByDisplayValue('Starter Project');
+    fireEvent.change(name, { target: { value: 'My Groove' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset project' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByDisplayValue('My Groove')).toBeInTheDocument();
   });
 
   it('toggles the loop flag', () => {
