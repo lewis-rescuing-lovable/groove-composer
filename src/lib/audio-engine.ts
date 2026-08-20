@@ -382,8 +382,6 @@ class AudioEngine {
     if (loop && stopTime !== undefined) {
       source.stop(stopTime);
     }
-    source.connect(dest);
-    source.start(time);
   }
 
   play() {
